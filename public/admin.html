@@ -150,6 +150,25 @@
     .img-url-row { display: flex; gap: 8px; align-items: center; margin-top: 10px; }
     .img-url-row span { font-size: 0.8rem; color: #94a3b8; white-space: nowrap; }
 
+    /* ── Upload de resumos ── */
+    .resumo-drop-area {
+      border: 2px dashed #e2e8f0; border-radius: 10px; padding: 22px;
+      text-align: center; cursor: pointer; transition: all 0.15s;
+      color: #64748b; font-size: 0.875rem; line-height: 1.6;
+    }
+    .resumo-drop-area:hover, .resumo-drop-area.drag-over {
+      border-color: #3b82f6; background: #f8faff; color: #2563eb;
+    }
+    .files-list { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+    .file-item {
+      display: flex; align-items: center; gap: 8px;
+      padding: 7px 12px; border-radius: 8px; font-size: 0.825rem;
+    }
+    .file-item.loading { background: #f8fafc; color: #64748b; }
+    .file-item.success { background: #f0fdf4; color: #166534; }
+    .file-item.error   { background: #fef2f2; color: #dc2626; }
+    .file-item .fname  { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
     /* ── Toast ── */
     #toast {
       position: fixed; bottom: 24px; right: 24px;
@@ -484,12 +503,32 @@
 
     if (type === 'cadeira') {
       body += `<div class="form-group">
-        <label>Conteúdo / Apontamentos</label>
-        <textarea id="modal-conteudo" placeholder="Cola aqui os apontamentos da cadeira..." style="min-height:300px"></textarea>
+        <label>Ficheiros de Resumos</label>
+        <div class="resumo-drop-area" id="resumo-drop-area" onclick="document.getElementById('resumo-files').click()">
+          📄 Clica ou arrasta ficheiros aqui<br>
+          <span style="font-size:0.75rem;color:#94a3b8">PDF · Word (.docx) · TXT — vários ficheiros de uma vez</span>
+          <input type="file" id="resumo-files" multiple accept=".pdf,.docx,.doc,.txt,text/plain,application/pdf" style="display:none" onchange="handleResumoFiles(this)">
+        </div>
+        <div id="files-list" class="files-list"></div>
+      </div>
+      <div class="form-group">
+        <label>Conteúdo extraído</label>
+        <textarea id="modal-conteudo" placeholder="O texto extraído dos ficheiros aparece aqui. Podes também colar ou escrever diretamente." style="min-height:260px"></textarea>
       </div>`
     }
 
     document.getElementById('modal-body').innerHTML = body
+
+    // Drag-drop para upload de resumos
+    if (type === 'cadeira') {
+      const area = document.getElementById('resumo-drop-area')
+      area.addEventListener('dragover',  e => { e.preventDefault(); area.classList.add('drag-over') })
+      area.addEventListener('dragleave', ()  => area.classList.remove('drag-over'))
+      area.addEventListener('drop', e => {
+        e.preventDefault(); area.classList.remove('drag-over')
+        processResumoFiles(Array.from(e.dataTransfer.files))
+      })
+    }
 
     // Pre-fill se editar
     if (id) {
@@ -622,6 +661,41 @@
       toast('Apagado.', 'success')
     } catch (err) {
       toast(err.message, 'error')
+    }
+  }
+
+  // ── Upload de resumos ─────────────────────────────────────────────────────
+  function handleResumoFiles(input) {
+    processResumoFiles(Array.from(input.files))
+    input.value = ''
+  }
+
+  async function processResumoFiles(files) {
+    const listEl    = document.getElementById('files-list')
+    const conteudoEl = document.getElementById('modal-conteudo')
+    if (!listEl || !conteudoEl) return
+
+    for (const file of files) {
+      if (file.size > 30 * 1024 * 1024) {
+        toast(`"${file.name}" excede 30 MB — ignorado.`, 'error'); continue
+      }
+      const itemEl = document.createElement('div')
+      itemEl.className = 'file-item loading'
+      itemEl.innerHTML = `<span>⏳</span><span class="fname">${esc(file.name)}</span><span style="color:#94a3b8">${(file.size/1024/1024).toFixed(1)} MB</span>`
+      listEl.appendChild(itemEl)
+
+      try {
+        const base64 = await fileToBase64(file)
+        const result = await api('POST', '/admin/api/extract-text', { base64, mimeType: file.type || '', filename: file.name })
+        const existing = conteudoEl.value.trim()
+        conteudoEl.value = existing ? existing + '\n\n' + result.text : result.text
+        itemEl.className = 'file-item success'
+        itemEl.querySelector('span').textContent = '✅'
+      } catch (err) {
+        itemEl.className = 'file-item error'
+        itemEl.querySelector('span').textContent = '❌'
+        itemEl.querySelector('.fname').textContent += ` — ${err.message}`
+      }
     }
   }
 

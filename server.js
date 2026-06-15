@@ -4,10 +4,12 @@ import { createClient } from '@supabase/supabase-js'
 import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
 import 'dotenv/config'
+import pdfParse from 'pdf-parse'
+import mammoth from 'mammoth'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const app = express()
-app.use(express.json({ limit: '20mb' }))
+app.use(express.json({ limit: '50mb' }))
 app.use(express.static(join(__dirname, 'aulaiq', 'dist')))
 
 // ── Variáveis de ambiente ─────────────────────────────────────────────────────
@@ -134,6 +136,30 @@ app.post('/admin/api/login', (req, res) => {
 app.post('/admin/api/logout', (_req, res) => {
   res.setHeader('Set-Cookie', 'admin_session=; HttpOnly; SameSite=Strict; Path=/admin; Max-Age=0')
   res.json({ ok: true })
+})
+
+// ── Admin: extração de texto de ficheiros ─────────────────────────────────────
+app.post('/admin/api/extract-text', requireAdmin, async (req, res) => {
+  const { base64, mimeType = '', filename = '' } = req.body
+  if (!base64) return res.status(400).json({ error: 'Ficheiro em falta.' })
+  try {
+    const buffer = Buffer.from(base64, 'base64')
+    let text = ''
+    const isPdf  = mimeType.includes('pdf')  || filename.toLowerCase().endsWith('.pdf')
+    const isDocx = mimeType.includes('word') || mimeType.includes('officedocument') || filename.toLowerCase().match(/\.docx?$/)
+    if (isPdf) {
+      const data = await pdfParse(buffer)
+      text = data.text
+    } else if (isDocx) {
+      const result = await mammoth.extractRawText({ buffer })
+      text = result.value
+    } else {
+      text = buffer.toString('utf-8')
+    }
+    res.json({ text: text.trim() })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
 })
 
 // ── Admin: upload de imagem ───────────────────────────────────────────────────
