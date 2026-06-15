@@ -118,7 +118,10 @@ app.post('/api/chat', async (req, res) => {
 })
 
 // ── Admin: página ─────────────────────────────────────────────────────────────
-app.get('/admin', (_req, res) => res.sendFile(join(__dirname, 'aulaiq', 'dist', 'admin.html')))
+app.get('/admin', (_req, res) => {
+  res.setHeader('Cache-Control', 'no-store')
+  res.sendFile(join(__dirname, 'aulaiq', 'dist', 'admin.html'))
+})
 
 // ── Admin: login / logout ─────────────────────────────────────────────────────
 app.post('/admin/api/login', (req, res) => {
