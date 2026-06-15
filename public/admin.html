@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Admin — Tutor de Estudo</title>
+  <title>Admin — AulaIQ</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f1f5f9; min-height: 100vh; }
@@ -60,15 +60,13 @@
     .filters { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
 
     /* ── Inputs & buttons ── */
-    input[type="text"], input[type="password"], select, textarea {
+    input[type="text"], input[type="password"], select {
       border: 1.5px solid #e2e8f0; border-radius: 8px; padding: 9px 12px;
       font-size: 0.9rem; font-family: inherit; color: #1e293b;
       outline: none; transition: border-color 0.15s; background: #fff; width: 100%;
     }
-    input[type="text"]:focus, input[type="password"]:focus,
-    select:focus, textarea:focus { border-color: #3b82f6; }
+    input[type="text"]:focus, input[type="password"]:focus, select:focus { border-color: #3b82f6; }
     select:disabled { background: #f8fafc; color: #94a3b8; }
-    textarea { resize: vertical; min-height: 200px; line-height: 1.6; }
 
     .btn {
       border: none; border-radius: 8px; cursor: pointer;
@@ -154,7 +152,7 @@
     .resumo-drop-area {
       border: 2px dashed #e2e8f0; border-radius: 10px; padding: 22px;
       text-align: center; cursor: pointer; transition: all 0.15s;
-      color: #64748b; font-size: 0.875rem; line-height: 1.6;
+      color: #64748b; font-size: 0.875rem; line-height: 1.8;
     }
     .resumo-drop-area:hover, .resumo-drop-area.drag-over {
       border-color: #3b82f6; background: #f8faff; color: #2563eb;
@@ -162,12 +160,11 @@
     .files-list { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
     .file-item {
       display: flex; align-items: center; gap: 8px;
-      padding: 7px 12px; border-radius: 8px; font-size: 0.825rem;
+      padding: 8px 12px; border-radius: 8px; font-size: 0.825rem;
     }
-    .file-item.loading { background: #f8fafc; color: #64748b; }
-    .file-item.success { background: #f0fdf4; color: #166534; }
-    .file-item.error   { background: #fef2f2; color: #dc2626; }
-    .file-item .fname  { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .file-item.uploading { background: #f8fafc; color: #64748b; }
+    .file-item.done      { background: #f0fdf4; color: #166534; }
+    .file-item .fname    { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
     /* ── Toast ── */
     #toast {
@@ -198,7 +195,7 @@
 <!-- ── Dashboard ── -->
 <div id="admin-screen">
   <header>
-    <span class="brand">🔧 Tutor Admin</span>
+    <span class="brand">🔧 AulaIQ Admin</span>
     <button class="tab-btn active" data-tab="faculdades" onclick="showTab('faculdades')">Faculdades</button>
     <button class="tab-btn"        data-tab="cursos"     onclick="showTab('cursos')">Cursos</button>
     <button class="tab-btn"        data-tab="cadeiras"   onclick="showTab('cadeiras')">Cadeiras</button>
@@ -249,7 +246,7 @@
 </div>
 
 <!-- ── Modal ── -->
-<div id="modal-overlay" onclick="e => { if(e.target===this) closeModal() }">
+<div id="modal-overlay" onclick="if(event.target===this)closeModal()">
   <div id="modal">
     <div class="modal-header">
       <h3 id="modal-title">Formulário</h3>
@@ -266,11 +263,14 @@
 <div id="toast"></div>
 
 <script>
-  let faculdades = []
-  let cursos     = []
-  let editingId  = null
-  let editingType = null
-  let pendingFile = null
+  let faculdades      = []
+  let cursos          = []
+  let cadeiras        = []
+  let editingId       = null
+  let editingType     = null
+  let pendingFile     = null
+  let currentFicheiros = []
+  let uploadingCount  = 0
 
   // ── Auth ──────────────────────────────────────────────────────────────────
   function showAdmin() {
@@ -324,7 +324,7 @@
     return data
   }
 
-  // ── Upload de imagem ──────────────────────────────────────────────────────
+  // ── Ficheiro → base64 ─────────────────────────────────────────────────────
   function fileToBase64(file) {
     return new Promise((resolve, reject) => {
       const reader = new FileReader()
@@ -334,6 +334,13 @@
     })
   }
 
+  function inferMimeType(name) {
+    const ext = name.split('.').pop()?.toLowerCase()
+    const map = { pdf: 'application/pdf', jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', gif: 'image/gif', txt: 'text/plain' }
+    return map[ext] || ''
+  }
+
+  // ── Upload de imagem (faculdades/cursos) ──────────────────────────────────
   async function uploadImageIfNeeded(urlInput) {
     if (pendingFile) {
       const base64 = await fileToBase64(pendingFile)
@@ -345,8 +352,7 @@
 
   // ── Load data ─────────────────────────────────────────────────────────────
   async function loadFaculdades() {
-    const data = await api('GET', '/admin/api/faculdades')
-    faculdades = data
+    faculdades = await api('GET', '/admin/api/faculdades')
     renderFaculdades()
     populateFaculdadeFilters()
   }
@@ -354,21 +360,20 @@
   async function loadCursos() {
     const facId = document.getElementById('filter-faculdade-cursos')?.value
     const url   = facId ? `/admin/api/cursos?faculdade_id=${facId}` : '/admin/api/cursos'
-    const data  = await api('GET', url)
-    cursos = data
+    cursos = await api('GET', url)
     renderCursos()
   }
 
   async function loadCadeiras() {
     const cursoId = document.getElementById('filter-curso-cadeiras')?.value
     const url     = cursoId ? `/admin/api/cadeiras?curso_id=${cursoId}` : '/admin/api/cadeiras'
-    const data    = await api('GET', url)
-    renderCadeiras(data)
+    cadeiras = await api('GET', url)
+    renderCadeiras(cadeiras)
   }
 
   async function filterCursosCadeiras() {
-    const facId  = document.getElementById('filter-faculdade-cadeiras').value
-    const sel    = document.getElementById('filter-curso-cadeiras')
+    const facId = document.getElementById('filter-faculdade-cadeiras').value
+    const sel   = document.getElementById('filter-curso-cadeiras')
     sel.innerHTML = '<option value="">Todos os cursos</option>'
     if (facId) {
       const data = await api('GET', `/admin/api/cursos?faculdade_id=${facId}`)
@@ -432,17 +437,20 @@
     const el = document.getElementById('list-cadeiras')
     if (!list.length) { el.innerHTML = emptyState('Nenhuma cadeira ainda.'); return }
     el.innerHTML = list.map(c => {
-      const curso   = cursos.find(x => x.id === c.curso_id)
-      const fac     = curso ? faculdades.find(f => f.id === curso.faculdade_id) : null
-      const preview = c.conteudo ? c.conteudo.slice(0, 60) + '…' : '(sem conteúdo)'
+      const curso = cursos.find(x => x.id === c.curso_id)
+      const fac   = curso ? faculdades.find(f => f.id === curso.faculdade_id) : null
+      const nFich = (c.ficheiros || []).length
+      const badge = nFich > 0
+        ? `<span style="background:#dbeafe;color:#1d4ed8;font-size:0.75rem;padding:2px 8px;border-radius:12px">${nFich} resumo${nFich > 1 ? 's' : ''}</span>`
+        : `<span style="background:#f1f5f9;color:#94a3b8;font-size:0.75rem;padding:2px 8px;border-radius:12px">sem resumos</span>`
       return `
         <div class="item-row">
           <div class="item-thumb-placeholder">📄</div>
           <div style="flex:1">
             <div class="item-name">${esc(c.nome)}</div>
             <div class="item-meta">${fac ? esc(fac.nome) + ' · ' : ''}${curso ? esc(curso.nome) : ''}</div>
-            <div class="item-meta" style="margin-top:2px">${esc(preview)}</div>
           </div>
+          ${badge}
           <div class="item-actions">
             <button class="btn btn-ghost" onclick='openModal("cadeira","${c.id}")'>Editar</button>
             <button class="btn btn-danger" onclick='deleteItem("cadeira","${c.id}","${esc(c.nome)}")'>Apagar</button>
@@ -457,9 +465,11 @@
 
   // ── Modal ─────────────────────────────────────────────────────────────────
   function openModal(type, id = null) {
-    editingType = type
-    editingId   = id
-    pendingFile = null
+    editingType      = type
+    editingId        = id
+    pendingFile      = null
+    currentFicheiros = []
+    uploadingCount   = 0
 
     const titles = { faculdade: 'Faculdade', curso: 'Curso', cadeira: 'Cadeira' }
     document.getElementById('modal-title').textContent = (id ? 'Editar ' : 'Nova ') + titles[type]
@@ -503,23 +513,21 @@
 
     if (type === 'cadeira') {
       body += `<div class="form-group">
-        <label>Ficheiros de Resumos</label>
+        <label>Resumos / Materiais</label>
         <div class="resumo-drop-area" id="resumo-drop-area" onclick="document.getElementById('resumo-files').click()">
-          📄 Clica ou arrasta ficheiros aqui<br>
-          <span style="font-size:0.75rem;color:#94a3b8">PDF · Word (.docx) · TXT — vários ficheiros de uma vez</span>
-          <input type="file" id="resumo-files" multiple accept=".pdf,.docx,.doc,.txt,text/plain,application/pdf" style="display:none" onchange="handleResumoFiles(this)">
+          📄 Clica ou arrasta ficheiros aqui
+          <br><small style="color:#94a3b8">PDF · JPEG · PNG · WebP — máx. 30 MB por ficheiro</small>
+          <input type="file" id="resumo-files" multiple
+            accept=".pdf,.jpg,.jpeg,.png,.webp,.gif,application/pdf,image/jpeg,image/png,image/webp,image/gif"
+            style="display:none" onchange="handleResumoFiles(this)">
         </div>
         <div id="files-list" class="files-list"></div>
-      </div>
-      <div class="form-group">
-        <label>Conteúdo extraído</label>
-        <textarea id="modal-conteudo" placeholder="O texto extraído dos ficheiros aparece aqui. Podes também colar ou escrever diretamente." style="min-height:260px"></textarea>
       </div>`
     }
 
     document.getElementById('modal-body').innerHTML = body
 
-    // Drag-drop para upload de resumos
+    // Drag-drop para cadeira
     if (type === 'cadeira') {
       const area = document.getElementById('resumo-drop-area')
       area.addEventListener('dragover',  e => { e.preventDefault(); area.classList.add('drag-over') })
@@ -530,7 +538,7 @@
       })
     }
 
-    // Pre-fill se editar
+    // Pre-fill ao editar
     if (id) {
       if (type === 'faculdade') {
         const item = faculdades.find(f => f.id === id)
@@ -555,10 +563,8 @@
           loadCursosModal()
         }
       } else if (type === 'cadeira') {
-        // Load cadeira from server to get conteudo
-        api('GET', `/admin/api/cadeiras`).then(list => {
-          const item = list.find(c => c.id === id)
-          if (!item) return
+        const item = cadeiras.find(c => c.id === id)
+        if (item) {
           const c = cursos.find(x => x.id === item.curso_id)
           if (c) {
             document.getElementById('modal-faculdade').value = c.faculdade_id
@@ -566,9 +572,10 @@
               document.getElementById('modal-curso').value = item.curso_id
             })
           }
-          document.getElementById('modal-nome').value     = item.nome
-          document.getElementById('modal-conteudo').value = item.conteudo
-        })
+          document.getElementById('modal-nome').value = item.nome
+          currentFicheiros = (item.ficheiros || []).map(f => ({ ...f }))
+          renderFilesList()
+        }
       }
     } else {
       if (type === 'curso' || type === 'cadeira') loadCursosModal()
@@ -606,6 +613,8 @@
   function closeModal() {
     document.getElementById('modal-overlay').classList.remove('open')
     editingId = editingType = pendingFile = null
+    currentFicheiros = []
+    uploadingCount   = 0
   }
 
   async function saveForm() {
@@ -634,9 +643,9 @@
       } else if (editingType === 'cadeira') {
         const curso_id = document.getElementById('modal-curso').value
         if (!curso_id) { toast('Seleciona o curso.', 'error'); return }
-        const conteudo = document.getElementById('modal-conteudo').value.trim()
-        if (editingId) await api('PUT', `/admin/api/cadeiras/${editingId}`, { curso_id, nome, conteudo })
-        else           await api('POST', '/admin/api/cadeiras', { curso_id, nome, conteudo })
+        const ficheiros = currentFicheiros.filter(f => f.url)
+        if (editingId) await api('PUT', `/admin/api/cadeiras/${editingId}`, { curso_id, nome, ficheiros })
+        else           await api('POST', '/admin/api/cadeiras', { curso_id, nome, ficheiros })
         await loadCadeiras()
       }
 
@@ -665,36 +674,76 @@
   }
 
   // ── Upload de resumos ─────────────────────────────────────────────────────
+  function setUploading(delta) {
+    uploadingCount += delta
+    const btn = document.getElementById('btn-save')
+    if (btn) btn.disabled = uploadingCount > 0
+  }
+
+  function fileIcon(tipo) {
+    if (!tipo) return '📎'
+    if (tipo.includes('pdf'))   return '📄'
+    if (tipo.includes('image')) return '🖼'
+    if (tipo.includes('text'))  return '📝'
+    return '📎'
+  }
+
+  function renderFilesList() {
+    const listEl = document.getElementById('files-list')
+    if (!listEl) return
+    if (!currentFicheiros.length) { listEl.innerHTML = ''; return }
+    listEl.innerHTML = currentFicheiros.map((f, i) => `
+      <div class="file-item ${f.url ? 'done' : 'uploading'}">
+        <span>${f.url ? fileIcon(f.tipo) : '⏳'}</span>
+        <span class="fname">${esc(f.nome)}</span>
+        <span style="color:#94a3b8;font-size:0.75rem">${(f.tamanho / 1024 / 1024).toFixed(1)} MB</span>
+        ${f.url
+          ? `<a href="${f.url}" target="_blank" style="font-size:0.75rem;color:#3b82f6;text-decoration:none;white-space:nowrap">Ver ↗</a>
+             <button style="background:#fef2f2;color:#dc2626;border:none;border-radius:6px;padding:2px 8px;font-size:0.75rem;cursor:pointer" onclick="removeFicheiro(${i})">×</button>`
+          : `<span style="font-size:0.75rem;color:#94a3b8">A carregar...</span>`
+        }
+      </div>`).join('')
+  }
+
+  function removeFicheiro(idx) {
+    currentFicheiros.splice(idx, 1)
+    renderFilesList()
+  }
+
   function handleResumoFiles(input) {
     processResumoFiles(Array.from(input.files))
     input.value = ''
   }
 
   async function processResumoFiles(files) {
-    const listEl    = document.getElementById('files-list')
-    const conteudoEl = document.getElementById('modal-conteudo')
-    if (!listEl || !conteudoEl) return
+    const SUPPORTED = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp', 'image/gif']
 
     for (const file of files) {
       if (file.size > 30 * 1024 * 1024) {
         toast(`"${file.name}" excede 30 MB — ignorado.`, 'error'); continue
       }
-      const itemEl = document.createElement('div')
-      itemEl.className = 'file-item loading'
-      itemEl.innerHTML = `<span>⏳</span><span class="fname">${esc(file.name)}</span><span style="color:#94a3b8">${(file.size/1024/1024).toFixed(1)} MB</span>`
-      listEl.appendChild(itemEl)
+      const tipo = file.type || inferMimeType(file.name)
+      if (!SUPPORTED.includes(tipo)) {
+        toast(`"${file.name}" não é suportado. Usa PDF ou imagem (JPEG, PNG, WebP).`, 'error')
+        continue
+      }
+
+      // Adicionar placeholder enquanto carrega
+      const idx = currentFicheiros.length
+      currentFicheiros.push({ nome: file.name, tipo, tamanho: file.size, url: null })
+      renderFilesList()
+      setUploading(+1)
 
       try {
         const base64 = await fileToBase64(file)
-        const result = await api('POST', '/admin/api/extract-text', { base64, mimeType: file.type || '', filename: file.name })
-        const existing = conteudoEl.value.trim()
-        conteudoEl.value = existing ? existing + '\n\n' + result.text : result.text
-        itemEl.className = 'file-item success'
-        itemEl.querySelector('span').textContent = '✅'
+        const result = await api('POST', '/admin/api/upload-resumo', { base64, filename: file.name, mimeType: tipo })
+        currentFicheiros[idx] = { nome: file.name, tipo, tamanho: file.size, url: result.url }
       } catch (err) {
-        itemEl.className = 'file-item error'
-        itemEl.querySelector('span').textContent = '❌'
-        itemEl.querySelector('.fname').textContent += ` — ${err.message}`
+        currentFicheiros.splice(idx, 1)
+        toast(`Erro ao carregar "${file.name}": ${err.message}`, 'error')
+      } finally {
+        setUploading(-1)
+        renderFilesList()
       }
     }
   }
