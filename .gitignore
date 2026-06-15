@@ -7,3 +7,9 @@ node_modules
 dist
 .env
 .DS_Store
+
+node_modules/
+dist/
+.env
+.env.*
+.DS_Store
