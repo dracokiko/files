@@ -6,303 +6,232 @@
   <title>Tutor de Estudo</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      background: #f0f2f5;
-      height: 100dvh;
-      display: flex;
-      flex-direction: column;
+      background: #f0f2f5; height: 100dvh; display: flex; flex-direction: column;
     }
 
-    /* ── Ecrã de seleção ── */
-    #selection-screen {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      flex: 1;
-      padding: 24px;
-      gap: 0;
+    /* ── Ecrãs de seleção ── */
+    .selection-screen {
+      display: none; flex-direction: column; flex: 1; overflow-y: auto;
+    }
+    .selection-screen.active { display: flex; }
+
+    .sel-header {
+      background: #fff; border-bottom: 1px solid #e5e7eb;
+      padding: 14px 20px; display: flex; align-items: center; gap: 12px;
+      flex-shrink: 0; position: sticky; top: 0; z-index: 10;
+    }
+    .sel-header .back {
+      background: none; border: none; cursor: pointer; color: #6b7280;
+      padding: 4px; display: flex; align-items: center; border-radius: 6px;
+      transition: background 0.15s;
+    }
+    .sel-header .back:hover { background: #f3f4f6; }
+    .sel-header h2 { font-size: 1rem; font-weight: 600; color: #111; }
+    .sel-header .subtitle { font-size: 0.8rem; color: #9ca3af; }
+
+    .sel-body { padding: 20px; flex: 1; }
+    .sel-intro { color: #6b7280; font-size: 0.9rem; margin-bottom: 20px; }
+
+    /* ── Cards ── */
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 14px;
     }
 
-    .selection-card {
-      background: #fff;
-      border-radius: 20px;
-      padding: 40px 36px;
-      width: 100%;
-      max-width: 420px;
-      box-shadow: 0 4px 24px rgba(0,0,0,0.08);
-      display: flex;
-      flex-direction: column;
-      gap: 24px;
+    .card {
+      background: #fff; border-radius: 14px; overflow: hidden;
+      cursor: pointer; border: 2px solid transparent;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+      transition: all 0.15s;
+    }
+    .card:hover { border-color: #2563eb; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(37,99,235,0.15); }
+    .card img {
+      width: 100%; height: 110px; object-fit: cover;
+      background: #f1f5f9;
+    }
+    .card .card-placeholder {
+      width: 100%; height: 110px; background: linear-gradient(135deg, #e0e7ff, #dbeafe);
+      display: flex; align-items: center; justify-content: center; font-size: 2.5rem;
+    }
+    .card .card-name {
+      padding: 10px 12px; font-size: 0.875rem; font-weight: 600;
+      color: #111; line-height: 1.3;
     }
 
-    .selection-card .logo {
-      text-align: center;
-      font-size: 2.8rem;
-      line-height: 1;
+    /* ── Lista de cadeiras ── */
+    .cadeiras-list { display: flex; flex-direction: column; gap: 10px; }
+    .cadeira-item {
+      background: #fff; border-radius: 12px; padding: 14px 16px;
+      cursor: pointer; border: 2px solid transparent;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.07);
+      display: flex; align-items: center; gap: 12px;
+      transition: all 0.15s;
     }
+    .cadeira-item:hover    { border-color: #2563eb; }
+    .cadeira-item.selected { border-color: #2563eb; background: #eff6ff; }
+    .cadeira-item .icon { font-size: 1.3rem; }
+    .cadeira-item .name { font-weight: 500; color: #111; flex: 1; }
 
-    .selection-card h1 {
-      text-align: center;
-      font-size: 1.3rem;
-      font-weight: 700;
-      color: #111;
+    .btn-start {
+      background: #2563eb; color: #fff; border: none; border-radius: 10px;
+      padding: 13px; font-size: 1rem; font-weight: 600; cursor: pointer;
+      width: 100%; margin-top: 20px; transition: background 0.15s;
     }
+    .btn-start:hover:not(:disabled)   { background: #1d4ed8; }
+    .btn-start:disabled { opacity: 0.4; cursor: default; }
 
-    .selection-card p {
-      text-align: center;
-      color: #6b7280;
-      font-size: 0.9rem;
-      margin-top: -12px;
-    }
+    /* ── Loading ── */
+    .loading { text-align: center; padding: 40px; color: #9ca3af; }
 
-    .field { display: flex; flex-direction: column; gap: 6px; }
-
-    .field label {
-      font-size: 0.8rem;
-      font-weight: 600;
-      color: #374151;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
-
-    .field select {
-      border: 1.5px solid #e5e7eb;
-      border-radius: 10px;
-      padding: 11px 14px;
-      font-size: 0.95rem;
-      font-family: inherit;
-      color: #111;
-      background: #fff;
-      outline: none;
-      cursor: pointer;
-      transition: border-color 0.15s;
-      appearance: none;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
-      background-repeat: no-repeat;
-      background-position: right 14px center;
-      padding-right: 36px;
-    }
-
-    .field select:focus { border-color: #2563eb; }
-    .field select:disabled { background-color: #f9fafb; color: #9ca3af; cursor: default; }
-
-    #btn-start {
-      background: #2563eb;
-      color: #fff;
-      border: none;
-      border-radius: 10px;
-      padding: 13px;
-      font-size: 1rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: background 0.15s, opacity 0.15s;
-    }
-    #btn-start:hover:not(:disabled) { background: #1d4ed8; }
-    #btn-start:disabled { opacity: 0.4; cursor: default; }
-
-    /* ── Ecrã de chat ── */
+    /* ── Chat ── */
     #chat-screen { display: none; flex-direction: column; flex: 1; overflow: hidden; }
 
     header {
-      background: #fff;
-      border-bottom: 1px solid #e5e7eb;
-      padding: 12px 20px;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      flex-shrink: 0;
+      background: #fff; border-bottom: 1px solid #e5e7eb;
+      padding: 12px 20px; display: flex; align-items: center; gap: 12px; flex-shrink: 0;
     }
-
     #btn-back {
-      background: none;
-      border: none;
-      cursor: pointer;
-      color: #6b7280;
-      padding: 4px;
-      display: flex;
-      align-items: center;
-      border-radius: 6px;
+      background: none; border: none; cursor: pointer; color: #6b7280;
+      padding: 4px; display: flex; align-items: center; border-radius: 6px;
       transition: background 0.15s;
     }
     #btn-back:hover { background: #f3f4f6; }
-
     .subject-info { flex: 1; }
-    .subject-info .cadeira  { font-weight: 600; font-size: 1rem; color: #111; }
-    .subject-info .faculdade { font-size: 0.8rem; color: #6b7280; }
-
+    .subject-info .cadeira-name   { font-weight: 600; font-size: 1rem; color: #111; }
+    .subject-info .curso-name { font-size: 0.8rem; color: #6b7280; }
     #btn-clear {
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      font-size: 0.85rem;
-      font-weight: 500;
-      padding: 7px 14px;
-      background: #fef2f2;
-      color: #dc2626;
-      transition: background 0.15s;
+      border: none; border-radius: 8px; cursor: pointer;
+      font-size: 0.85rem; font-weight: 500; padding: 7px 14px;
+      background: #fef2f2; color: #dc2626; transition: background 0.15s;
     }
     #btn-clear:hover { background: #fee2e2; }
 
     #chat {
-      flex: 1;
-      overflow-y: auto;
-      padding: 20px;
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
+      flex: 1; overflow-y: auto; padding: 20px;
+      display: flex; flex-direction: column; gap: 14px;
     }
-
     .message {
-      max-width: 75%;
-      padding: 12px 16px;
-      border-radius: 18px;
-      line-height: 1.55;
-      font-size: 0.95rem;
-      word-break: break-word;
+      max-width: 75%; padding: 12px 16px; border-radius: 18px;
+      line-height: 1.55; font-size: 0.95rem; word-break: break-word;
     }
-
     .message.user {
-      background: #2563eb;
-      color: #fff;
-      border-bottom-right-radius: 4px;
-      align-self: flex-end;
+      background: #2563eb; color: #fff;
+      border-bottom-right-radius: 4px; align-self: flex-end;
     }
-
     .message.assistant {
-      background: #fff;
-      color: #111;
-      border-bottom-left-radius: 4px;
-      align-self: flex-start;
+      background: #fff; color: #111;
+      border-bottom-left-radius: 4px; align-self: flex-start;
       box-shadow: 0 1px 3px rgba(0,0,0,0.08);
     }
-
     .message.assistant strong { font-weight: 600; }
     .message.assistant em { font-style: italic; }
     .message.assistant code {
-      background: #f3f4f6;
-      padding: 1px 5px;
-      border-radius: 4px;
-      font-size: 0.875em;
-      font-family: 'Courier New', monospace;
+      background: #f3f4f6; padding: 1px 5px;
+      border-radius: 4px; font-size: 0.875em; font-family: monospace;
     }
-
-    .typing {
-      display: flex;
-      gap: 5px;
-      align-items: center;
-      padding: 14px 18px !important;
-    }
+    .typing { display: flex; gap: 5px; align-items: center; padding: 14px 18px !important; }
     .typing span {
-      width: 7px; height: 7px;
-      background: #9ca3af;
-      border-radius: 50%;
-      animation: bounce 1.2s infinite;
+      width: 7px; height: 7px; background: #9ca3af;
+      border-radius: 50%; animation: bounce 1.2s infinite;
     }
     .typing span:nth-child(2) { animation-delay: 0.2s; }
     .typing span:nth-child(3) { animation-delay: 0.4s; }
-
     @keyframes bounce {
       0%, 60%, 100% { transform: translateY(0); }
       30% { transform: translateY(-6px); }
     }
 
-    footer {
-      background: #fff;
-      border-top: 1px solid #e5e7eb;
-      padding: 12px 20px;
-      display: flex;
-      gap: 10px;
-      align-items: flex-end;
-      flex-shrink: 0;
+    .welcome-chat {
+      text-align: center; color: #9ca3af; font-size: 0.9rem;
+      margin: auto; padding: 40px 20px;
     }
+    .welcome-chat .icon { font-size: 2.5rem; margin-bottom: 10px; }
 
+    footer {
+      background: #fff; border-top: 1px solid #e5e7eb;
+      padding: 12px 20px; display: flex; gap: 10px; align-items: flex-end; flex-shrink: 0;
+    }
     #input {
-      flex: 1;
-      border: 1px solid #d1d5db;
-      border-radius: 12px;
-      padding: 10px 14px;
-      font-size: 0.95rem;
-      font-family: inherit;
-      resize: none;
-      outline: none;
-      max-height: 120px;
-      line-height: 1.5;
+      flex: 1; border: 1px solid #d1d5db; border-radius: 12px;
+      padding: 10px 14px; font-size: 0.95rem; font-family: inherit;
+      resize: none; outline: none; max-height: 120px; line-height: 1.5;
       transition: border-color 0.15s;
     }
     #input:focus { border-color: #2563eb; }
-
     #btn-send {
-      background: #2563eb;
-      color: #fff;
-      border: none;
-      border-radius: 12px;
-      width: 42px;
-      height: 42px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-      transition: background 0.15s;
+      background: #2563eb; color: #fff; border: none; border-radius: 12px;
+      width: 42px; height: 42px; cursor: pointer; display: flex;
+      align-items: center; justify-content: center; flex-shrink: 0; transition: background 0.15s;
     }
-    #btn-send:hover { background: #1d4ed8; }
+    #btn-send:hover    { background: #1d4ed8; }
     #btn-send:disabled { background: #93c5fd; cursor: default; }
-
-    .welcome-chat {
-      text-align: center;
-      color: #9ca3af;
-      font-size: 0.9rem;
-      margin: auto;
-      padding: 40px 20px;
-    }
-    .welcome-chat .icon { font-size: 2.5rem; margin-bottom: 10px; }
   </style>
 </head>
 <body>
 
-<!-- ── Ecrã de seleção ───────────────────────────────────────────────── -->
-<div id="selection-screen">
-  <div class="selection-card">
-    <div class="logo">📚</div>
+<!-- ── Passo 1: Faculdades ── -->
+<div id="screen-faculdades" class="selection-screen active">
+  <div class="sel-header">
+    <span style="font-size:1.4rem">📚</span>
     <div>
-      <h1>Tutor de Estudo</h1>
-      <p>Escolhe a tua faculdade e cadeira para começar.</p>
+      <h2>Tutor de Estudo</h2>
+      <div class="subtitle">Escolhe a tua faculdade</div>
     </div>
-
-    <div class="field">
-      <label>Faculdade</label>
-      <select id="sel-faculdade">
-        <option value="">A carregar...</option>
-      </select>
+  </div>
+  <div class="sel-body">
+    <div id="grid-faculdades" class="cards-grid">
+      <div class="loading">A carregar...</div>
     </div>
-
-    <div class="field">
-      <label>Cadeira</label>
-      <select id="sel-cadeira" disabled>
-        <option value="">Seleciona primeiro a faculdade</option>
-      </select>
-    </div>
-
-    <button id="btn-start" disabled>Começar a estudar →</button>
   </div>
 </div>
 
-<!-- ── Ecrã de chat ──────────────────────────────────────────────────── -->
+<!-- ── Passo 2: Cursos ── -->
+<div id="screen-cursos" class="selection-screen">
+  <div class="sel-header">
+    <button class="back" onclick="goTo('faculdades')">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+    </button>
+    <div>
+      <h2 id="label-faculdade-cursos">Faculdade</h2>
+      <div class="subtitle">Escolhe o teu curso</div>
+    </div>
+  </div>
+  <div class="sel-body">
+    <div id="grid-cursos" class="cards-grid"></div>
+  </div>
+</div>
+
+<!-- ── Passo 3: Cadeiras ── -->
+<div id="screen-cadeiras" class="selection-screen">
+  <div class="sel-header">
+    <button class="back" onclick="goTo('cursos')">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+    </button>
+    <div>
+      <h2 id="label-curso-cadeiras">Curso</h2>
+      <div class="subtitle">Escolhe a cadeira</div>
+    </div>
+  </div>
+  <div class="sel-body">
+    <div id="list-cadeiras" class="cadeiras-list"></div>
+    <button class="btn-start" id="btn-start" disabled onclick="startChat()">Começar a estudar →</button>
+  </div>
+</div>
+
+<!-- ── Chat ── -->
 <div id="chat-screen">
   <header>
-    <button id="btn-back" title="Voltar">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-        <polyline points="15 18 9 12 15 6"></polyline>
-      </svg>
+    <button id="btn-back" onclick="goTo('cadeiras')">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
     </button>
     <div class="subject-info">
-      <div class="cadeira"  id="label-cadeira"></div>
-      <div class="faculdade" id="label-faculdade"></div>
+      <div class="cadeira-name" id="label-cadeira"></div>
+      <div class="curso-name"   id="label-curso"></div>
     </div>
-    <button id="btn-clear">Limpar</button>
+    <button id="btn-clear" onclick="clearChat()">Limpar</button>
   </header>
 
   <div id="chat">
@@ -314,9 +243,8 @@
 
   <footer>
     <textarea id="input" placeholder="Escreve a tua pergunta..." rows="1"></textarea>
-    <button id="btn-send" title="Enviar">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-           stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <button id="btn-send" onclick="sendMessage()">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
         <line x1="22" y1="2" x2="11" y2="13"></line>
         <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
       </svg>
@@ -326,127 +254,130 @@
 
 <script>
   // ── Estado ────────────────────────────────────────────────────────────────
-  let currentFaculdade = ''
-  let currentCadeira   = ''
-  let history          = []
-  let isStreaming      = false
+  let selectedFaculdade = null
+  let selectedCurso     = null
+  let selectedCadeira   = null
+  let history           = []
+  let isStreaming       = false
 
-  // ── Elementos ─────────────────────────────────────────────────────────────
-  const selectionScreen = document.getElementById('selection-screen')
-  const chatScreen      = document.getElementById('chat-screen')
-  const selFaculdade    = document.getElementById('sel-faculdade')
-  const selCadeira      = document.getElementById('sel-cadeira')
-  const btnStart        = document.getElementById('btn-start')
-  const btnBack         = document.getElementById('btn-back')
-  const btnClear        = document.getElementById('btn-clear')
-  const chatEl          = document.getElementById('chat')
-  const inputEl         = document.getElementById('input')
-  const btnSend         = document.getElementById('btn-send')
-
-  // ── Carregar faculdades ao arrancar ───────────────────────────────────────
-  async function loadFaculdades() {
-    const res  = await fetch('/api/faculdades')
-    const list = await res.json()
-
-    selFaculdade.innerHTML = '<option value="">Seleciona a faculdade</option>'
-    list.forEach(f => {
-      const opt = document.createElement('option')
-      opt.value = opt.textContent = f
-      selFaculdade.appendChild(opt)
-    })
+  // ── Navegação ─────────────────────────────────────────────────────────────
+  function goTo(screen) {
+    document.querySelectorAll('.selection-screen').forEach(el => el.classList.remove('active'))
+    document.getElementById('chat-screen').style.display = 'none'
+    const el = document.getElementById(`screen-${screen}`)
+    if (el) el.classList.add('active')
   }
 
-  selFaculdade.addEventListener('change', async () => {
-    const faculdade = selFaculdade.value
-    btnStart.disabled = true
-    selCadeira.disabled = true
-    selCadeira.innerHTML = '<option value="">A carregar...</option>'
+  // ── Carregar faculdades ───────────────────────────────────────────────────
+  async function loadFaculdades() {
+    const data = await fetch('/api/faculdades').then(r => r.json())
+    const grid = document.getElementById('grid-faculdades')
+    if (!data.length) { grid.innerHTML = '<p style="color:#9ca3af">Nenhuma faculdade disponível ainda.</p>'; return }
+    grid.innerHTML = data.map(f => `
+      <div class="card" onclick="selectFaculdade('${f.id}', '${esc(f.nome)}')">
+        ${f.imagem_url
+          ? `<img src="${f.imagem_url}" alt="${esc(f.nome)}" onerror="this.parentElement.querySelector('.card-placeholder') && (this.style.display='none')">`
+          : `<div class="card-placeholder">🏛</div>`}
+        <div class="card-name">${esc(f.nome)}</div>
+      </div>`).join('')
+  }
 
-    if (!faculdade) {
-      selCadeira.innerHTML = '<option value="">Seleciona primeiro a faculdade</option>'
-      return
-    }
+  async function selectFaculdade(id, nome) {
+    selectedFaculdade = { id, nome }
+    document.getElementById('label-faculdade-cursos').textContent = nome
+    goTo('cursos')
 
-    const res  = await fetch(`/api/cadeiras?faculdade=${encodeURIComponent(faculdade)}`)
-    const list = await res.json()
+    const grid = document.getElementById('grid-cursos')
+    grid.innerHTML = '<div class="loading">A carregar...</div>'
+    const data = await fetch(`/api/cursos?faculdade_id=${id}`).then(r => r.json())
+    if (!data.length) { grid.innerHTML = '<p style="color:#9ca3af">Nenhum curso disponível.</p>'; return }
+    grid.innerHTML = data.map(c => `
+      <div class="card" onclick="selectCurso('${c.id}', '${esc(c.nome)}')">
+        ${c.imagem_url
+          ? `<img src="${c.imagem_url}" alt="${esc(c.nome)}">`
+          : `<div class="card-placeholder">📘</div>`}
+        <div class="card-name">${esc(c.nome)}</div>
+      </div>`).join('')
+  }
 
-    selCadeira.innerHTML = '<option value="">Seleciona a cadeira</option>'
-    list.forEach(c => {
-      const opt = document.createElement('option')
-      opt.value = opt.textContent = c
-      selCadeira.appendChild(opt)
-    })
-    selCadeira.disabled = false
-  })
+  async function selectCurso(id, nome) {
+    selectedCurso   = { id, nome }
+    selectedCadeira = null
+    document.getElementById('label-curso-cadeiras').textContent = nome
+    document.getElementById('btn-start').disabled = true
+    goTo('cadeiras')
 
-  selCadeira.addEventListener('change', () => {
-    btnStart.disabled = !selCadeira.value
-  })
+    const list = document.getElementById('list-cadeiras')
+    list.innerHTML = '<div class="loading">A carregar...</div>'
+    const data = await fetch(`/api/cadeiras?curso_id=${id}`).then(r => r.json())
+    if (!data.length) { list.innerHTML = '<p style="color:#9ca3af">Nenhuma cadeira disponível.</p>'; return }
+    list.innerHTML = data.map(c => `
+      <div class="cadeira-item" onclick="selectCadeira('${c.id}', '${esc(c.nome)}', this)">
+        <span class="icon">📄</span>
+        <span class="name">${esc(c.nome)}</span>
+      </div>`).join('')
+  }
 
-  btnStart.addEventListener('click', () => {
-    currentFaculdade = selFaculdade.value
-    currentCadeira   = selCadeira.value
-    history          = []
+  function selectCadeira(id, nome, el) {
+    document.querySelectorAll('.cadeira-item').forEach(e => e.classList.remove('selected'))
+    el.classList.add('selected')
+    selectedCadeira = { id, nome }
+    document.getElementById('btn-start').disabled = false
+  }
 
-    document.getElementById('label-cadeira').textContent   = currentCadeira
-    document.getElementById('label-faculdade').textContent = currentFaculdade
-
-    chatEl.innerHTML = `
-      <div class="welcome-chat">
-        <div class="icon">💬</div>
-        <p>Faz a tua primeira pergunta sobre <strong>${currentCadeira}</strong>.</p>
-      </div>`
-
-    selectionScreen.style.display = 'none'
-    chatScreen.style.display = 'flex'
-    inputEl.focus()
-  })
-
-  btnBack.addEventListener('click', () => {
-    chatScreen.style.display = 'none'
-    selectionScreen.style.display = 'flex'
-  })
-
-  btnClear.addEventListener('click', () => {
+  function startChat() {
     history = []
-    chatEl.innerHTML = `
+    document.getElementById('label-cadeira').textContent = selectedCadeira.nome
+    document.getElementById('label-curso').textContent   = selectedCurso.nome + ' · ' + selectedFaculdade.nome
+    document.getElementById('chat').innerHTML = `
       <div class="welcome-chat">
         <div class="icon">💬</div>
-        <p>Faz a tua primeira pergunta sobre <strong>${currentCadeira}</strong>.</p>
+        <p>Faz a tua primeira pergunta sobre <strong>${esc(selectedCadeira.nome)}</strong>.</p>
       </div>`
-  })
+    document.querySelectorAll('.selection-screen').forEach(el => el.classList.remove('active'))
+    document.getElementById('chat-screen').style.display = 'flex'
+    document.getElementById('chat-screen').style.flexDirection = 'column'
+    document.getElementById('input').focus()
+  }
+
+  function clearChat() {
+    history = []
+    document.getElementById('chat').innerHTML = `
+      <div class="welcome-chat">
+        <div class="icon">💬</div>
+        <p>Faz a tua primeira pergunta sobre <strong>${esc(selectedCadeira.nome)}</strong>.</p>
+      </div>`
+  }
 
   // ── Chat ──────────────────────────────────────────────────────────────────
+  const inputEl = document.getElementById('input')
   inputEl.addEventListener('input', () => {
     inputEl.style.height = 'auto'
     inputEl.style.height = Math.min(inputEl.scrollHeight, 120) + 'px'
   })
-
   inputEl.addEventListener('keydown', e => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage() }
   })
 
-  btnSend.addEventListener('click', sendMessage)
-
   function addMessage(role, content = '') {
-    chatEl.querySelector('.welcome-chat')?.remove()
+    document.getElementById('chat').querySelector('.welcome-chat')?.remove()
     const el = document.createElement('div')
     el.className = `message ${role}`
     el.textContent = content
-    chatEl.appendChild(el)
-    chatEl.scrollTop = chatEl.scrollHeight
+    document.getElementById('chat').appendChild(el)
+    document.getElementById('chat').scrollTop = 9999
     return el
   }
 
   function renderMarkdown(text) {
     return text
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-      .replace(/\*(.+?)\*/g, '<em>$1</em>')
-      .replace(/`([^`]+)`/g, '<code>$1</code>')
-      .replace(/^#{1,3}\s+(.+)$/gm, '<strong>$1</strong>')
-      .replace(/^[-*]\s+(.+)$/gm, '• $1')
-      .replace(/\n/g, '<br>')
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+      .replace(/\*(.+?)\*/g,'<em>$1</em>')
+      .replace(/`([^`]+)`/g,'<code>$1</code>')
+      .replace(/^#{1,3}\s+(.+)$/gm,'<strong>$1</strong>')
+      .replace(/^[-*]\s+(.+)$/gm,'• $1')
+      .replace(/\n/g,'<br>')
   }
 
   async function sendMessage() {
@@ -454,78 +385,71 @@
     if (!question || isStreaming) return
 
     isStreaming = true
-    btnSend.disabled = true
-    inputEl.value = ''
-    inputEl.style.height = 'auto'
+    document.getElementById('btn-send').disabled = true
+    inputEl.value = ''; inputEl.style.height = 'auto'
 
     addMessage('user', question)
 
-    const typingEl = document.createElement('div')
-    typingEl.className = 'message assistant typing'
-    typingEl.innerHTML = '<span></span><span></span><span></span>'
-    chatEl.appendChild(typingEl)
-    chatEl.scrollTop = chatEl.scrollHeight
+    const typing = document.createElement('div')
+    typing.className = 'message assistant typing'
+    typing.innerHTML = '<span></span><span></span><span></span>'
+    document.getElementById('chat').appendChild(typing)
+    document.getElementById('chat').scrollTop = 9999
 
-    let fullText    = ''
-    let assistantEl = null
+    let fullText = '', assistantEl = null
 
     try {
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ faculdade: currentFaculdade, cadeira: currentCadeira, history, question }),
+        body: JSON.stringify({ cadeira_id: selectedCadeira.id, history, question }),
       })
 
-      const reader  = res.body.getReader()
+      const reader = res.body.getReader()
       const decoder = new TextDecoder()
-      let buffer    = ''
+      let buffer = ''
 
       while (true) {
         const { done, value } = await reader.read()
         if (done) break
-
         buffer += decoder.decode(value, { stream: true })
-        const lines = buffer.split('\n')
-        buffer = lines.pop()
-
+        const lines = buffer.split('\n'); buffer = lines.pop()
         for (const line of lines) {
           if (!line.startsWith('data: ')) continue
           const raw = line.slice(6)
           if (raw === '[DONE]') continue
-
           try {
             const { text, error } = JSON.parse(raw)
             if (error) throw new Error(error)
             if (text) {
-              if (!assistantEl) { typingEl.remove(); assistantEl = addMessage('assistant') }
+              if (!assistantEl) { typing.remove(); assistantEl = addMessage('assistant') }
               fullText += text
               assistantEl.textContent = fullText
-              chatEl.scrollTop = chatEl.scrollHeight
+              document.getElementById('chat').scrollTop = 9999
             }
-          } catch (e) {
-            if (e instanceof SyntaxError) continue
-            throw e
-          }
+          } catch(e) { if (e instanceof SyntaxError) continue; throw e }
         }
       }
 
       if (assistantEl) assistantEl.innerHTML = renderMarkdown(fullText)
-
-      history.push({ role: 'user',      content: question  })
-      history.push({ role: 'assistant', content: fullText  })
+      history.push({ role: 'user', content: question })
+      history.push({ role: 'assistant', content: fullText })
 
     } catch (err) {
-      typingEl.remove()
+      typing.remove()
       if (!assistantEl) assistantEl = addMessage('assistant')
       assistantEl.textContent = `Erro: ${err.message}`
     } finally {
       isStreaming = false
-      btnSend.disabled = false
+      document.getElementById('btn-send').disabled = false
       inputEl.focus()
     }
   }
 
-  // ── Init ──────────────────────────────────────────────────────────────────
+  function esc(s) {
+    return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')
+  }
+
   loadFaculdades()
 </script>
 

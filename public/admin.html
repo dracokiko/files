@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin — Tutor de Estudo</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f1f5f9; min-height: 100vh; }
+
+    /* ── Login ── */
+    #login-screen {
+      display: flex; align-items: center; justify-content: center;
+      min-height: 100vh; padding: 20px;
+    }
+    .login-card {
+      background: #fff; border-radius: 16px; padding: 40px;
+      width: 100%; max-width: 360px; box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+      display: flex; flex-direction: column; gap: 16px; text-align: center;
+    }
+    .login-card h1 { font-size: 1.4rem; color: #1e293b; }
+    .login-card p  { color: #64748b; font-size: 0.9rem; margin-top: -8px; }
+
+    /* ── Header ── */
+    header {
+      background: #1e293b; color: #fff;
+      display: flex; align-items: center; gap: 16px;
+      padding: 0 24px; height: 56px; flex-shrink: 0;
+    }
+    header .brand { font-weight: 700; font-size: 1rem; margin-right: auto; }
+    .tab-btn {
+      background: none; border: none; color: #94a3b8; cursor: pointer;
+      font-size: 0.9rem; font-weight: 500; padding: 8px 14px; border-radius: 8px;
+      transition: all 0.15s;
+    }
+    .tab-btn:hover   { color: #fff; background: rgba(255,255,255,0.08); }
+    .tab-btn.active  { color: #fff; background: #3b82f6; }
+    .btn-logout {
+      background: none; border: 1px solid #475569; color: #94a3b8;
+      cursor: pointer; font-size: 0.8rem; padding: 5px 12px; border-radius: 6px;
+      transition: all 0.15s; margin-left: 8px;
+    }
+    .btn-logout:hover { border-color: #94a3b8; color: #fff; }
+
+    /* ── Main layout ── */
+    #admin-screen { display: none; flex-direction: column; min-height: 100vh; }
+    main { flex: 1; padding: 28px 24px; max-width: 960px; margin: 0 auto; width: 100%; }
+
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* ── Section header ── */
+    .section-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 20px;
+    }
+    .section-header h2 { font-size: 1.2rem; color: #1e293b; }
+
+    /* ── Filters bar ── */
+    .filters { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+
+    /* ── Inputs & buttons ── */
+    input[type="text"], input[type="password"], select, textarea {
+      border: 1.5px solid #e2e8f0; border-radius: 8px; padding: 9px 12px;
+      font-size: 0.9rem; font-family: inherit; color: #1e293b;
+      outline: none; transition: border-color 0.15s; background: #fff; width: 100%;
+    }
+    input[type="text"]:focus, input[type="password"]:focus,
+    select:focus, textarea:focus { border-color: #3b82f6; }
+    select:disabled { background: #f8fafc; color: #94a3b8; }
+    textarea { resize: vertical; min-height: 200px; line-height: 1.6; }
+
+    .btn {
+      border: none; border-radius: 8px; cursor: pointer;
+      font-size: 0.875rem; font-weight: 500; padding: 9px 18px;
+      transition: all 0.15s; display: inline-flex; align-items: center; gap: 6px;
+    }
+    .btn-primary  { background: #3b82f6; color: #fff; }
+    .btn-primary:hover  { background: #2563eb; }
+    .btn-primary:disabled { background: #93c5fd; cursor: default; }
+    .btn-danger   { background: #fef2f2; color: #dc2626; }
+    .btn-danger:hover   { background: #fee2e2; }
+    .btn-ghost    { background: #f1f5f9; color: #475569; }
+    .btn-ghost:hover    { background: #e2e8f0; }
+
+    /* ── List ── */
+    .item-list { display: flex; flex-direction: column; gap: 8px; }
+    .item-row {
+      background: #fff; border-radius: 10px; padding: 12px 16px;
+      display: flex; align-items: center; gap: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    }
+    .item-thumb {
+      width: 42px; height: 42px; border-radius: 8px; object-fit: cover;
+      background: #f1f5f9; flex-shrink: 0; border: 1px solid #e2e8f0;
+    }
+    .item-thumb-placeholder {
+      width: 42px; height: 42px; border-radius: 8px;
+      background: #f1f5f9; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.2rem; border: 1px solid #e2e8f0;
+    }
+    .item-name { flex: 1; font-weight: 500; color: #1e293b; font-size: 0.95rem; }
+    .item-meta { font-size: 0.8rem; color: #64748b; }
+    .item-actions { display: flex; gap: 6px; }
+
+    .empty-state {
+      text-align: center; padding: 48px 20px; color: #94a3b8;
+      background: #fff; border-radius: 10px;
+    }
+    .empty-state .icon { font-size: 2rem; margin-bottom: 8px; }
+
+    /* ── Modal ── */
+    #modal-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.4); z-index: 100;
+      align-items: center; justify-content: center; padding: 20px;
+    }
+    #modal-overlay.open { display: flex; }
+    #modal {
+      background: #fff; border-radius: 16px; padding: 28px;
+      width: 100%; max-width: 540px; max-height: 90vh;
+      overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+    }
+    .modal-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 24px;
+    }
+    .modal-header h3 { font-size: 1.1rem; color: #1e293b; }
+    .btn-close {
+      background: none; border: none; cursor: pointer; color: #94a3b8;
+      font-size: 1.3rem; line-height: 1; padding: 4px;
+    }
+    .btn-close:hover { color: #1e293b; }
+    .form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+    .form-group label { font-size: 0.8rem; font-weight: 600; color: #475569; text-transform: uppercase; letter-spacing: 0.04em; }
+    .modal-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px; }
+
+    /* ── Image upload ── */
+    .img-upload-area {
+      border: 2px dashed #e2e8f0; border-radius: 10px; padding: 20px;
+      text-align: center; cursor: pointer; transition: border-color 0.15s;
+      color: #64748b; font-size: 0.875rem;
+    }
+    .img-upload-area:hover { border-color: #3b82f6; }
+    .img-preview {
+      width: 100%; max-height: 160px; object-fit: cover;
+      border-radius: 8px; margin-top: 12px; display: none;
+    }
+    .img-url-row { display: flex; gap: 8px; align-items: center; margin-top: 10px; }
+    .img-url-row span { font-size: 0.8rem; color: #94a3b8; white-space: nowrap; }
+
+    /* ── Toast ── */
+    #toast {
+      position: fixed; bottom: 24px; right: 24px;
+      padding: 12px 18px; border-radius: 10px; font-size: 0.875rem;
+      opacity: 0; transition: all 0.3s; pointer-events: none; z-index: 200;
+      transform: translateY(8px);
+    }
+    #toast.show { opacity: 1; transform: translateY(0); }
+    #toast.success { background: #022c22; color: #4ade80; }
+    #toast.error   { background: #450a0a; color: #f87171; }
+  </style>
+</head>
+<body>
+
+<!-- ── Login ── -->
+<div id="login-screen">
+  <div class="login-card">
+    <div style="font-size:2.5rem">🔧</div>
+    <h1>Painel de Admin</h1>
+    <p>Introduz a password para entrar</p>
+    <input type="password" id="pwd" placeholder="Password" onkeydown="if(event.key==='Enter') login()">
+    <button class="btn btn-primary" onclick="login()">Entrar →</button>
+    <p id="login-err" style="color:#ef4444;font-size:0.85rem;min-height:1em"></p>
+  </div>
+</div>
+
+<!-- ── Dashboard ── -->
+<div id="admin-screen">
+  <header>
+    <span class="brand">🔧 Tutor Admin</span>
+    <button class="tab-btn active" data-tab="faculdades" onclick="showTab('faculdades')">Faculdades</button>
+    <button class="tab-btn"        data-tab="cursos"     onclick="showTab('cursos')">Cursos</button>
+    <button class="tab-btn"        data-tab="cadeiras"   onclick="showTab('cadeiras')">Cadeiras</button>
+    <button class="btn-logout" onclick="logout()">Sair</button>
+  </header>
+
+  <main>
+    <!-- Faculdades -->
+    <div id="tab-faculdades" class="tab-content active">
+      <div class="section-header">
+        <h2>Faculdades</h2>
+        <button class="btn btn-primary" onclick="openModal('faculdade')">+ Nova Faculdade</button>
+      </div>
+      <div id="list-faculdades" class="item-list"></div>
+    </div>
+
+    <!-- Cursos -->
+    <div id="tab-cursos" class="tab-content">
+      <div class="section-header">
+        <h2>Cursos</h2>
+        <button class="btn btn-primary" onclick="openModal('curso')">+ Novo Curso</button>
+      </div>
+      <div class="filters">
+        <select id="filter-faculdade-cursos" onchange="loadCursos()" style="max-width:280px">
+          <option value="">Todas as faculdades</option>
+        </select>
+      </div>
+      <div id="list-cursos" class="item-list"></div>
+    </div>
+
+    <!-- Cadeiras -->
+    <div id="tab-cadeiras" class="tab-content">
+      <div class="section-header">
+        <h2>Cadeiras</h2>
+        <button class="btn btn-primary" onclick="openModal('cadeira')">+ Nova Cadeira</button>
+      </div>
+      <div class="filters">
+        <select id="filter-faculdade-cadeiras" onchange="filterCursosCadeiras()" style="max-width:240px">
+          <option value="">Todas as faculdades</option>
+        </select>
+        <select id="filter-curso-cadeiras" onchange="loadCadeiras()" style="max-width:240px">
+          <option value="">Todos os cursos</option>
+        </select>
+      </div>
+      <div id="list-cadeiras" class="item-list"></div>
+    </div>
+  </main>
+</div>
+
+<!-- ── Modal ── -->
+<div id="modal-overlay" onclick="e => { if(e.target===this) closeModal() }">
+  <div id="modal">
+    <div class="modal-header">
+      <h3 id="modal-title">Formulário</h3>
+      <button class="btn-close" onclick="closeModal()">×</button>
+    </div>
+    <div id="modal-body"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-primary" id="btn-save" onclick="saveForm()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+  let adminKey   = ''
+  let faculdades = []
+  let cursos     = []
+  let editingId  = null
+  let editingType = null
+  let pendingFile = null
+
+  // ── Auth ──────────────────────────────────────────────────────────────────
+  async function login() {
+    const pwd = document.getElementById('pwd').value
+    const res = await fetch('/admin/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: pwd }),
+    })
+    if (!res.ok) { document.getElementById('login-err').textContent = 'Password incorreta.'; return }
+    adminKey = pwd
+    sessionStorage.setItem('adminKey', pwd)
+    document.getElementById('login-screen').style.display = 'none'
+    document.getElementById('admin-screen').style.display = 'flex'
+    document.getElementById('admin-screen').style.flexDirection = 'column'
+    await init()
+  }
+
+  function logout() {
+    sessionStorage.removeItem('adminKey')
+    location.reload()
+  }
+
+  // ── Init ──────────────────────────────────────────────────────────────────
+  async function init() {
+    await loadFaculdades()
+    await loadCursos()
+    await loadCadeiras()
+    populateFaculdadeFilters()
+  }
+
+  // ── Tabs ──────────────────────────────────────────────────────────────────
+  function showTab(tab) {
+    document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'))
+    document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'))
+    document.getElementById(`tab-${tab}`).classList.add('active')
+    document.querySelector(`[data-tab="${tab}"]`).classList.add('active')
+  }
+
+  // ── API helper ────────────────────────────────────────────────────────────
+  async function api(method, path, body) {
+    const res = await fetch(path, {
+      method,
+      headers: { 'Content-Type': 'application/json', 'x-admin-key': adminKey },
+      body: body ? JSON.stringify(body) : undefined,
+    })
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.error || 'Erro desconhecido')
+    return data
+  }
+
+  // ── Upload de imagem ──────────────────────────────────────────────────────
+  function fileToBase64(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(reader.result.split(',')[1])
+      reader.onerror = reject
+      reader.readAsDataURL(file)
+    })
+  }
+
+  async function uploadImageIfNeeded(urlInput) {
+    if (pendingFile) {
+      const base64 = await fileToBase64(pendingFile)
+      const result = await api('POST', '/admin/api/upload', { base64, filename: pendingFile.name, mimeType: pendingFile.type })
+      return result.url
+    }
+    return urlInput.value.trim() || null
+  }
+
+  // ── Load data ─────────────────────────────────────────────────────────────
+  async function loadFaculdades() {
+    const data = await api('GET', '/admin/api/faculdades')
+    faculdades = data
+    renderFaculdades()
+    populateFaculdadeFilters()
+  }
+
+  async function loadCursos() {
+    const facId = document.getElementById('filter-faculdade-cursos')?.value
+    const url   = facId ? `/admin/api/cursos?faculdade_id=${facId}` : '/admin/api/cursos'
+    const data  = await api('GET', url)
+    cursos = data
+    renderCursos()
+  }
+
+  async function loadCadeiras() {
+    const cursoId = document.getElementById('filter-curso-cadeiras')?.value
+    const url     = cursoId ? `/admin/api/cadeiras?curso_id=${cursoId}` : '/admin/api/cadeiras'
+    const data    = await api('GET', url)
+    renderCadeiras(data)
+  }
+
+  async function filterCursosCadeiras() {
+    const facId  = document.getElementById('filter-faculdade-cadeiras').value
+    const sel    = document.getElementById('filter-curso-cadeiras')
+    sel.innerHTML = '<option value="">Todos os cursos</option>'
+    if (facId) {
+      const data = await api('GET', `/admin/api/cursos?faculdade_id=${facId}`)
+      data.forEach(c => sel.add(new Option(c.nome, c.id)))
+    }
+    await loadCadeiras()
+  }
+
+  function populateFaculdadeFilters() {
+    ['filter-faculdade-cursos','filter-faculdade-cadeiras'].forEach(id => {
+      const sel = document.getElementById(id)
+      if (!sel) return
+      const val = sel.value
+      sel.innerHTML = '<option value="">Todas as faculdades</option>'
+      faculdades.forEach(f => sel.add(new Option(f.nome, f.id)))
+      sel.value = val
+    })
+  }
+
+  // ── Render ────────────────────────────────────────────────────────────────
+  function imgEl(url, emoji = '🏛') {
+    if (url) return `<img class="item-thumb" src="${url}" alt="">`
+    return `<div class="item-thumb-placeholder">${emoji}</div>`
+  }
+
+  function renderFaculdades() {
+    const el = document.getElementById('list-faculdades')
+    if (!faculdades.length) { el.innerHTML = emptyState('Nenhuma faculdade ainda.'); return }
+    el.innerHTML = faculdades.map(f => `
+      <div class="item-row">
+        ${imgEl(f.imagem_url, '🏛')}
+        <span class="item-name">${esc(f.nome)}</span>
+        <div class="item-actions">
+          <button class="btn btn-ghost" onclick="openModal('faculdade','${f.id}')">Editar</button>
+          <button class="btn btn-danger" onclick="deleteItem('faculdade','${f.id}','${esc(f.nome)}')">Apagar</button>
+        </div>
+      </div>`).join('')
+  }
+
+  function renderCursos() {
+    const el = document.getElementById('list-cursos')
+    if (!cursos.length) { el.innerHTML = emptyState('Nenhum curso ainda.'); return }
+    el.innerHTML = cursos.map(c => {
+      const fac = faculdades.find(f => f.id === c.faculdade_id)
+      return `
+        <div class="item-row">
+          ${imgEl(c.imagem_url, '📘')}
+          <div style="flex:1">
+            <div class="item-name">${esc(c.nome)}</div>
+            <div class="item-meta">${fac ? esc(fac.nome) : ''}</div>
+          </div>
+          <div class="item-actions">
+            <button class="btn btn-ghost" onclick="openModal('curso','${c.id}')">Editar</button>
+            <button class="btn btn-danger" onclick="deleteItem('curso','${c.id}','${esc(c.nome)}')">Apagar</button>
+          </div>
+        </div>`
+    }).join('')
+  }
+
+  function renderCadeiras(list) {
+    const el = document.getElementById('list-cadeiras')
+    if (!list.length) { el.innerHTML = emptyState('Nenhuma cadeira ainda.'); return }
+    el.innerHTML = list.map(c => {
+      const curso   = cursos.find(x => x.id === c.curso_id)
+      const fac     = curso ? faculdades.find(f => f.id === curso.faculdade_id) : null
+      const preview = c.conteudo ? c.conteudo.slice(0, 60) + '…' : '(sem conteúdo)'
+      return `
+        <div class="item-row">
+          <div class="item-thumb-placeholder">📄</div>
+          <div style="flex:1">
+            <div class="item-name">${esc(c.nome)}</div>
+            <div class="item-meta">${fac ? esc(fac.nome) + ' · ' : ''}${curso ? esc(curso.nome) : ''}</div>
+            <div class="item-meta" style="margin-top:2px">${esc(preview)}</div>
+          </div>
+          <div class="item-actions">
+            <button class="btn btn-ghost" onclick='openModal("cadeira","${c.id}")'>Editar</button>
+            <button class="btn btn-danger" onclick='deleteItem("cadeira","${c.id}","${esc(c.nome)}")'>Apagar</button>
+          </div>
+        </div>`
+    }).join('')
+  }
+
+  function emptyState(msg) {
+    return `<div class="empty-state"><div class="icon">📭</div><p>${msg}</p></div>`
+  }
+
+  // ── Modal ─────────────────────────────────────────────────────────────────
+  function openModal(type, id = null) {
+    editingType = type
+    editingId   = id
+    pendingFile = null
+
+    const titles = { faculdade: 'Faculdade', curso: 'Curso', cadeira: 'Cadeira' }
+    document.getElementById('modal-title').textContent = (id ? 'Editar ' : 'Nova ') + titles[type]
+
+    let body = ''
+
+    if (type === 'curso' || type === 'cadeira') {
+      const opts = faculdades.map(f => `<option value="${f.id}">${esc(f.nome)}</option>`).join('')
+      body += `<div class="form-group">
+        <label>Faculdade</label>
+        <select id="modal-faculdade" onchange="loadCursosModal()">${opts}</select>
+      </div>`
+    }
+
+    if (type === 'cadeira') {
+      body += `<div class="form-group">
+        <label>Curso</label>
+        <select id="modal-curso"><option value="">A carregar...</option></select>
+      </div>`
+    }
+
+    body += `<div class="form-group">
+      <label>Nome</label>
+      <input type="text" id="modal-nome" placeholder="Nome">
+    </div>`
+
+    if (type !== 'cadeira') {
+      body += `<div class="form-group">
+        <label>Imagem</label>
+        <div class="img-upload-area" onclick="document.getElementById('modal-file').click()">
+          📎 Clica para escolher um ficheiro
+          <input type="file" id="modal-file" accept="image/*" style="display:none" onchange="previewFile(this)">
+        </div>
+        <img id="img-preview" class="img-preview" alt="Preview">
+        <div class="img-url-row">
+          <span>ou URL:</span>
+          <input type="text" id="modal-img-url" placeholder="https://..." oninput="previewUrl(this.value)">
+        </div>
+      </div>`
+    }
+
+    if (type === 'cadeira') {
+      body += `<div class="form-group">
+        <label>Conteúdo / Apontamentos</label>
+        <textarea id="modal-conteudo" placeholder="Cola aqui os apontamentos da cadeira..." style="min-height:300px"></textarea>
+      </div>`
+    }
+
+    document.getElementById('modal-body').innerHTML = body
+
+    // Pre-fill se editar
+    if (id) {
+      if (type === 'faculdade') {
+        const item = faculdades.find(f => f.id === id)
+        if (item) {
+          document.getElementById('modal-nome').value = item.nome
+          if (item.imagem_url) {
+            document.getElementById('modal-img-url').value = item.imagem_url
+            const prev = document.getElementById('img-preview')
+            prev.src = item.imagem_url; prev.style.display = 'block'
+          }
+        }
+      } else if (type === 'curso') {
+        const item = cursos.find(c => c.id === id)
+        if (item) {
+          document.getElementById('modal-faculdade').value = item.faculdade_id
+          document.getElementById('modal-nome').value = item.nome
+          if (item.imagem_url) {
+            document.getElementById('modal-img-url').value = item.imagem_url
+            const prev = document.getElementById('img-preview')
+            prev.src = item.imagem_url; prev.style.display = 'block'
+          }
+          loadCursosModal()
+        }
+      } else if (type === 'cadeira') {
+        // Load cadeira from server to get conteudo
+        api('GET', `/admin/api/cadeiras`).then(list => {
+          const item = list.find(c => c.id === id)
+          if (!item) return
+          const c = cursos.find(x => x.id === item.curso_id)
+          if (c) {
+            document.getElementById('modal-faculdade').value = c.faculdade_id
+            loadCursosModal().then(() => {
+              document.getElementById('modal-curso').value = item.curso_id
+            })
+          }
+          document.getElementById('modal-nome').value     = item.nome
+          document.getElementById('modal-conteudo').value = item.conteudo
+        })
+      }
+    } else {
+      if (type === 'curso' || type === 'cadeira') loadCursosModal()
+    }
+
+    document.getElementById('modal-overlay').classList.add('open')
+  }
+
+  async function loadCursosModal() {
+    const facId = document.getElementById('modal-faculdade')?.value
+    const sel   = document.getElementById('modal-curso')
+    if (!sel) return
+    sel.innerHTML = '<option value="">A carregar...</option>'
+    if (!facId) return
+    const data = await api('GET', `/admin/api/cursos?faculdade_id=${facId}`)
+    sel.innerHTML = data.map(c => `<option value="${c.id}">${esc(c.nome)}</option>`).join('')
+  }
+
+  function previewFile(input) {
+    const file = input.files[0]
+    if (!file) return
+    pendingFile = file
+    const prev = document.getElementById('img-preview')
+    prev.src = URL.createObjectURL(file)
+    prev.style.display = 'block'
+  }
+
+  function previewUrl(url) {
+    const prev = document.getElementById('img-preview')
+    if (url) { prev.src = url; prev.style.display = 'block' }
+    else prev.style.display = 'none'
+    pendingFile = null
+  }
+
+  function closeModal() {
+    document.getElementById('modal-overlay').classList.remove('open')
+    editingId = editingType = pendingFile = null
+  }
+
+  async function saveForm() {
+    const btn = document.getElementById('btn-save')
+    btn.disabled = true
+    btn.textContent = 'A guardar...'
+
+    try {
+      const nome = document.getElementById('modal-nome').value.trim()
+      if (!nome) { toast('O nome é obrigatório.', 'error'); return }
+
+      if (editingType === 'faculdade') {
+        const imagem_url = await uploadImageIfNeeded(document.getElementById('modal-img-url'))
+        if (editingId) await api('PUT', `/admin/api/faculdades/${editingId}`, { nome, imagem_url })
+        else           await api('POST', '/admin/api/faculdades', { nome, imagem_url })
+        await loadFaculdades()
+
+      } else if (editingType === 'curso') {
+        const faculdade_id = document.getElementById('modal-faculdade').value
+        if (!faculdade_id) { toast('Seleciona a faculdade.', 'error'); return }
+        const imagem_url = await uploadImageIfNeeded(document.getElementById('modal-img-url'))
+        if (editingId) await api('PUT', `/admin/api/cursos/${editingId}`, { faculdade_id, nome, imagem_url })
+        else           await api('POST', '/admin/api/cursos', { faculdade_id, nome, imagem_url })
+        await loadCursos()
+
+      } else if (editingType === 'cadeira') {
+        const curso_id = document.getElementById('modal-curso').value
+        if (!curso_id) { toast('Seleciona o curso.', 'error'); return }
+        const conteudo = document.getElementById('modal-conteudo').value.trim()
+        if (editingId) await api('PUT', `/admin/api/cadeiras/${editingId}`, { curso_id, nome, conteudo })
+        else           await api('POST', '/admin/api/cadeiras', { curso_id, nome, conteudo })
+        await loadCadeiras()
+      }
+
+      closeModal()
+      toast('Guardado com sucesso!', 'success')
+    } catch (err) {
+      toast(err.message, 'error')
+    } finally {
+      btn.disabled = false
+      btn.textContent = 'Guardar'
+    }
+  }
+
+  async function deleteItem(type, id, nome) {
+    if (!confirm(`Apagar "${nome}"? Esta ação não pode ser desfeita.`)) return
+    const endpoints = { faculdade: 'faculdades', curso: 'cursos', cadeira: 'cadeiras' }
+    try {
+      await api('DELETE', `/admin/api/${endpoints[type]}/${id}`)
+      if (type === 'faculdade') await loadFaculdades()
+      else if (type === 'curso') await loadCursos()
+      else await loadCadeiras()
+      toast('Apagado.', 'success')
+    } catch (err) {
+      toast(err.message, 'error')
+    }
+  }
+
+  // ── Toast ─────────────────────────────────────────────────────────────────
+  function toast(msg, type = 'success') {
+    const el = document.getElementById('toast')
+    el.textContent = msg
+    el.className = `show ${type}`
+    clearTimeout(el._t)
+    el._t = setTimeout(() => el.classList.remove('show'), 3000)
+  }
+
+  function esc(str) {
+    return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')
+  }
+
+  // ── Auto-login se sessão guardada ─────────────────────────────────────────
+  const saved = sessionStorage.getItem('adminKey')
+  if (saved) {
+    adminKey = saved
+    document.getElementById('login-screen').style.display = 'none'
+    document.getElementById('admin-screen').style.display = 'flex'
+    document.getElementById('admin-screen').style.flexDirection = 'column'
+    init()
+  }
+</script>
+
+</body>
+</html>

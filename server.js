@@ -8,7 +8,7 @@ import 'dotenv/config'
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const app = express()
 app.use(express.json({ limit: '20mb' }))
-app.use(express.static('public'))
+app.use(express.static(join(__dirname, 'public')))
 
 // ── Variáveis de ambiente ─────────────────────────────────────────────────────
 const { GEMINI_API_KEY, SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY, ADMIN_PASSWORD } = process.env
@@ -222,6 +222,10 @@ app.delete('/admin/api/cadeiras/:id', requireAdmin, async (req, res) => {
   res.json({ ok: true })
 })
 
-// ── Arrancar ──────────────────────────────────────────────────────────────────
-const PORT = process.env.PORT ?? 3000
-app.listen(PORT, () => console.log(`\n📚 Tutor: http://localhost:${PORT}\n🔧 Admin: http://localhost:${PORT}/admin\n`))
+// ── Arrancar (apenas local; na Vercel é serverless) ───────────────────────────
+if (!process.env.VERCEL) {
+  const PORT = process.env.PORT ?? 3000
+  app.listen(PORT, () => console.log(`\n📚 Tutor: http://localhost:${PORT}\n🔧 Admin: http://localhost:${PORT}/admin\n`))
+}
+
+export default app
