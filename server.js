@@ -8,7 +8,7 @@ import 'dotenv/config'
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const app = express()
 app.use(express.json({ limit: '20mb' }))
-app.use(express.static(join(__dirname, 'public')))
+app.use(express.static(join(__dirname, 'aulaiq', 'dist')))
 
 // ── Variáveis de ambiente ─────────────────────────────────────────────────────
 const { GEMINI_API_KEY, SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY, ADMIN_PASSWORD } = process.env
@@ -221,6 +221,9 @@ app.delete('/admin/api/cadeiras/:id', requireAdmin, async (req, res) => {
   modelCache.delete(req.params.id)
   res.json({ ok: true })
 })
+
+// ── Fallback SPA ──────────────────────────────────────────────────────────────
+app.get('*', (_req, res) => res.sendFile(join(__dirname, 'aulaiq', 'dist', 'index.html')))
 
 // ── Arrancar (apenas local; na Vercel é serverless) ───────────────────────────
 if (!process.env.VERCEL) {

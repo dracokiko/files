@@ -1,11 +1,12 @@
 {
   "version": 2,
+  "buildCommand": "cd aulaiq && npm install && npm run build",
   "builds": [
     {
       "src": "server.js",
       "use": "@vercel/node",
       "config": {
-        "includeFiles": ["public/**"]
+        "includeFiles": ["public/**", "aulaiq/dist/**"]
       }
     }
   ],
