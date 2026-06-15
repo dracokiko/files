@@ -22,8 +22,13 @@ const supabase      = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
 const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
 // ── Middleware de admin ───────────────────────────────────────────────────────
+function getAdminCookie(req) {
+  const entry = (req.headers.cookie || '').split(';').map(c => c.trim()).find(c => c.startsWith('admin_session='))
+  return entry ? decodeURIComponent(entry.slice('admin_session='.length)) : ''
+}
+
 function requireAdmin(req, res, next) {
-  if (req.headers['x-admin-key'] !== ADMIN_PASSWORD) {
+  if (getAdminCookie(req) !== ADMIN_PASSWORD) {
     return res.status(401).json({ error: 'Não autorizado.' })
   }
   next()
@@ -115,9 +120,16 @@ app.post('/api/chat', async (req, res) => {
 // ── Admin: página ─────────────────────────────────────────────────────────────
 app.get('/admin', (_req, res) => res.sendFile(join(__dirname, 'public', 'admin.html')))
 
-// ── Admin: login ──────────────────────────────────────────────────────────────
+// ── Admin: login / logout ─────────────────────────────────────────────────────
 app.post('/admin/api/login', (req, res) => {
   if (req.body.password !== ADMIN_PASSWORD) return res.status(401).json({ error: 'Password incorreta.' })
+  const secure = process.env.VERCEL ? '; Secure' : ''
+  res.setHeader('Set-Cookie', `admin_session=${encodeURIComponent(ADMIN_PASSWORD)}; HttpOnly; SameSite=Strict; Path=/admin${secure}`)
+  res.json({ ok: true })
+})
+
+app.post('/admin/api/logout', (_req, res) => {
+  res.setHeader('Set-Cookie', 'admin_session=; HttpOnly; SameSite=Strict; Path=/admin; Max-Age=0')
   res.json({ ok: true })
 })
 

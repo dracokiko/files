@@ -247,7 +247,6 @@
 <div id="toast"></div>
 
 <script>
-  let adminKey   = ''
   let faculdades = []
   let cursos     = []
   let editingId  = null
@@ -255,6 +254,12 @@
   let pendingFile = null
 
   // ── Auth ──────────────────────────────────────────────────────────────────
+  function showAdmin() {
+    document.getElementById('login-screen').style.display = 'none'
+    document.getElementById('admin-screen').style.display = 'flex'
+    document.getElementById('admin-screen').style.flexDirection = 'column'
+  }
+
   async function login() {
     const pwd = document.getElementById('pwd').value
     const res = await fetch('/admin/api/login', {
@@ -263,17 +268,12 @@
       body: JSON.stringify({ password: pwd }),
     })
     if (!res.ok) { document.getElementById('login-err').textContent = 'Password incorreta.'; return }
-    adminKey = pwd
-    sessionStorage.setItem('adminKey', pwd)
-    document.getElementById('login-screen').style.display = 'none'
-    document.getElementById('admin-screen').style.display = 'flex'
-    document.getElementById('admin-screen').style.flexDirection = 'column'
+    showAdmin()
     await init()
   }
 
   function logout() {
-    sessionStorage.removeItem('adminKey')
-    location.reload()
+    fetch('/admin/api/logout', { method: 'POST' }).finally(() => location.reload())
   }
 
   // ── Init ──────────────────────────────────────────────────────────────────
@@ -296,7 +296,8 @@
   async function api(method, path, body) {
     const res = await fetch(path, {
       method,
-      headers: { 'Content-Type': 'application/json', 'x-admin-key': adminKey },
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
       body: body ? JSON.stringify(body) : undefined,
     })
     const data = await res.json()
@@ -637,15 +638,10 @@
     return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')
   }
 
-  // ── Auto-login se sessão guardada ─────────────────────────────────────────
-  const saved = sessionStorage.getItem('adminKey')
-  if (saved) {
-    adminKey = saved
-    document.getElementById('login-screen').style.display = 'none'
-    document.getElementById('admin-screen').style.display = 'flex'
-    document.getElementById('admin-screen').style.flexDirection = 'column'
-    init()
-  }
+  // ── Auto-login via cookie ─────────────────────────────────────────────────
+  fetch('/admin/api/faculdades', { credentials: 'same-origin' })
+    .then(r => { if (r.ok) { showAdmin(); init() } })
+    .catch(() => {})
 </script>
 
 </body>
