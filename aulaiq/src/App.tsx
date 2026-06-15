@@ -10,6 +10,8 @@ import FAQ from './components/FAQ';
 import Footer from './components/Footer';
 import OnboardingModal from './components/OnboardingModal';
 import LoginModal from './components/LoginModal';
+import Dashboard from './components/Dashboard';
+import ProductShowcase from './components/landing/ProductShowcase';
 
 export default function App() {
   const { user, login, logout, register } = useAuth();
@@ -21,31 +23,44 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-white font-sans antialiased">
-      <Navbar
-        user={user}
-        onJoin={() => setShowOnboarding(true)}
-        onLogin={() => setShowLogin(true)}
-        onLogout={logout}
-      />
-
-      <main>
-        <Hero
-          onStart={() => setShowOnboarding(true)}
-          onPlans={scrollToPlanos}
+      {user ? (
+        /* ── Logged-in: show Dashboard ──────────────────────────────────── */
+        <Dashboard
+          user={user}
+          onLogout={logout}
         />
+      ) : (
+        /* ── Logged-out: show landing page ──────────────────────────────── */
+        <>
+          <Navbar
+            user={null}
+            onJoin={() => setShowOnboarding(true)}
+            onLogin={() => setShowLogin(true)}
+            onLogout={logout}
+          />
 
-        <InstitutionSelector onCreatePlan={() => setShowOnboarding(true)} />
+          <main>
+            <Hero
+              onStart={() => setShowOnboarding(true)}
+              onPlans={scrollToPlanos}
+            />
 
-        <HowItWorks />
+            <InstitutionSelector onCreatePlan={() => setShowOnboarding(true)} />
 
-        <Features />
+            <HowItWorks />
 
-        <Pricing onSelectPlan={() => setShowOnboarding(true)} />
+            <ProductShowcase />
 
-        <FAQ />
-      </main>
+            <Features />
 
-      <Footer />
+            <Pricing onSelectPlan={() => setShowOnboarding(true)} />
+
+            <FAQ />
+          </main>
+
+          <Footer />
+        </>
+      )}
 
       {showOnboarding && (
         <OnboardingModal

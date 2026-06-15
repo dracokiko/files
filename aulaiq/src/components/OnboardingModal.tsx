@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { institutions, coursesByInstitution } from '../data/institutions';
+import { validYearsByCourse } from '../data/subjects';
 import { createDemoProfile, getStudyPlanSuggestion } from '../utils/auth';
 import type { UserProfile } from '../types';
 
@@ -102,11 +103,13 @@ function InputField({
 // ---------------------------------------------------------------------------
 
 export default function OnboardingModal({ onClose, onComplete }: OnboardingModalProps) {
-  const TOTAL_STEPS = 4;
+  const TOTAL_STEPS = 5;
 
   const [step, setStep] = useState(0);
   const [instId, setInstId] = useState('');
   const [courseId, setCourseId] = useState('');
+  const [year, setYear] = useState<number | null>(null);
+  const [yearLabel, setYearLabel] = useState('');
   const [studyFrequency, setStudyFrequency] = useState('');
   const [studyHours, setStudyHours] = useState('');
   const [mainGoal, setMainGoal] = useState('');
@@ -121,6 +124,7 @@ export default function OnboardingModal({ onClose, onComplete }: OnboardingModal
   const selectedInst = institutions.find((i) => i.id === instId) ?? null;
   const courses = instId ? (coursesByInstitution[instId] ?? []) : [];
   const selectedCourse = courses.find((c) => c.id === courseId) ?? null;
+  const availableYears = courseId ? (validYearsByCourse[courseId] ?? []) : [];
 
   const validate = useCallback((): boolean => {
     const errs: Record<string, string> = {};
@@ -129,14 +133,16 @@ export default function OnboardingModal({ onClose, onComplete }: OnboardingModal
 
     if (step === 1 && !courseId) errs.course = 'Seleciona um curso para continuar.';
 
-    if (step === 2) {
+    if (step === 2 && year === null) errs.year = 'Seleciona o teu ano para continuar.';
+
+    if (step === 3) {
       if (!studyFrequency) errs.studyFrequency = 'Escolhe uma opção.';
       if (!studyHours) errs.studyHours = 'Escolhe uma opção.';
       if (!mainGoal) errs.mainGoal = 'Escolhe uma opção.';
       if (!studyStyle) errs.studyStyle = 'Escolhe uma opção.';
     }
 
-    if (step === 3) {
+    if (step === 4) {
       if (!name.trim()) errs.name = 'Insere o teu nome.';
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errs.email = 'Insere um email válido.';
       if (password.length < 8) errs.password = 'Password deve ter pelo menos 8 caracteres.';
@@ -145,7 +151,7 @@ export default function OnboardingModal({ onClose, onComplete }: OnboardingModal
 
     setErrors(errs);
     return Object.keys(errs).length === 0;
-  }, [step, instId, courseId, studyFrequency, studyHours, mainGoal, studyStyle, name, email, password, confirmPassword]);
+  }, [step, instId, courseId, year, studyFrequency, studyHours, mainGoal, studyStyle, name, email, password, confirmPassword]);
 
   const handleNext = () => {
     if (!validate()) return;
@@ -153,7 +159,7 @@ export default function OnboardingModal({ onClose, onComplete }: OnboardingModal
       setStep((s) => s + 1);
       return;
     }
-    // Final step — create profile
+    // Final step — create profile on free plan; success screen offers trial upgrade
     // TODO: Production — POST /api/auth/register with hashed password (never plain text)
     const created = createDemoProfile({
       name: name.trim(),
@@ -162,6 +168,9 @@ export default function OnboardingModal({ onClose, onComplete }: OnboardingModal
       institutionName: selectedInst?.name ?? instId,
       courseId,
       courseName: selectedCourse?.name ?? courseId,
+      year: year!,
+      yearLabel,
+      plan: 'free',
       preferences: { studyFrequency, studyHours, mainGoal, studyStyle },
     });
     setProfile(created);
@@ -210,12 +219,12 @@ export default function OnboardingModal({ onClose, onComplete }: OnboardingModal
                   <p className="text-sm font-bold text-gray-900 mt-0.5">{profile.course}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Objetivo</p>
-                  <p className="text-sm font-bold text-gray-900 mt-0.5">{profile.preferences.mainGoal}</p>
+                  <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Ano</p>
+                  <p className="text-sm font-bold text-gray-900 mt-0.5">{profile.yearLabel}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Estilo</p>
-                  <p className="text-sm font-bold text-gray-900 mt-0.5">{profile.preferences.studyStyle}</p>
+                  <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Objetivo</p>
+                  <p className="text-sm font-bold text-gray-900 mt-0.5">{profile.preferences.mainGoal}</p>
                 </div>
               </div>
 
@@ -232,12 +241,18 @@ export default function OnboardingModal({ onClose, onComplete }: OnboardingModal
             </div>
 
             <button
-              onClick={() => { onComplete(profile); }}
+              onClick={() => { onComplete({ ...profile, plan: 'trial' }); }}
               className="w-full py-3.5 text-sm font-bold text-white bg-gradient-to-r from-blue-600 to-violet-600 rounded-2xl hover:shadow-lg hover:shadow-blue-200 hover:scale-[1.01] transition-all duration-200"
             >
               Ativar teste de 7 dias — 6€
             </button>
             <p className="text-xs text-gray-400 mt-3">Sem compromisso. Cancela quando quiseres.</p>
+            <button
+              onClick={() => { onComplete(profile); }}
+              className="mt-3 text-xs text-gray-400 hover:text-gray-600 underline transition-colors"
+            >
+              Continuar com plano grátis
+            </button>
           </div>
         ) : (
           /* Multi-step form */
@@ -314,7 +329,12 @@ export default function OnboardingModal({ onClose, onComplete }: OnboardingModal
                       <OptionButton
                         key={course.id}
                         selected={isSelected}
-                        onClick={() => { setCourseId(course.id); setErrors({}); }}
+                        onClick={() => {
+                          setCourseId(course.id);
+                          setYear(null);
+                          setYearLabel('');
+                          setErrors({});
+                        }}
                       >
                         {course.name}
                       </OptionButton>
@@ -325,8 +345,42 @@ export default function OnboardingModal({ onClose, onComplete }: OnboardingModal
               </div>
             )}
 
-            {/* Step 2 — Study habits */}
+            {/* Step 2 — Year */}
             {step === 2 && (
+              <div className="animate-fade-in">
+                <h2 className="text-xl font-black text-gray-900 mb-1">O teu ano</h2>
+                <p className="text-sm text-gray-500 mb-6">
+                  Em que ano estás em{' '}
+                  <span className="font-semibold text-blue-600">{selectedCourse?.name}</span>?
+                </p>
+
+                <div className="space-y-2">
+                  {availableYears.map((y) => {
+                    const isSelected = year === y.value;
+                    return (
+                      <OptionButton
+                        key={y.value}
+                        selected={isSelected}
+                        onClick={() => {
+                          setYear(y.value);
+                          setYearLabel(y.label);
+                          setErrors({});
+                        }}
+                      >
+                        {y.label}
+                      </OptionButton>
+                    );
+                  })}
+                </div>
+                {errors.year && <p className="mt-3 text-xs text-red-500">{errors.year}</p>}
+                <p className="text-xs text-gray-400 mt-4">
+                  Podes alterar o ano a qualquer momento no teu perfil.
+                </p>
+              </div>
+            )}
+
+            {/* Step 3 — Study habits */}
+            {step === 3 && (
               <div className="animate-fade-in space-y-6">
                 <div>
                   <h2 className="text-xl font-black text-gray-900 mb-1">Hábitos de estudo</h2>
@@ -388,8 +442,8 @@ export default function OnboardingModal({ onClose, onComplete }: OnboardingModal
               </div>
             )}
 
-            {/* Step 3 — Account creation */}
-            {step === 3 && (
+            {/* Step 4 — Account creation */}
+            {step === 4 && (
               <div className="animate-fade-in space-y-4">
                 <div>
                   <h2 className="text-xl font-black text-gray-900 mb-1">Cria a tua conta</h2>

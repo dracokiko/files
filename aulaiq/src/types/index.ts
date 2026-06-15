@@ -11,6 +11,19 @@ export interface Course {
   institutionId: string;
 }
 
+export interface Subject {
+  id: string;
+  name: string;
+  institution: string;
+  course: string;
+  year: number;
+  yearLabel: string;
+  semester: number;
+  semesterLabel: string;
+  isOptional?: boolean;
+  optionalChoices?: string[];
+}
+
 export interface PricingPlan {
   id: string;
   name: string;
@@ -34,6 +47,8 @@ export interface StudyPreferences {
   studyStyle: string;
 }
 
+export type Plan = 'free' | 'trial' | 'monthly' | 'semester';
+
 export interface UserProfile {
   name: string;
   email: string;
@@ -41,6 +56,9 @@ export interface UserProfile {
   institutionId: string;
   course: string;
   courseId: string;
+  year: number;
+  yearLabel: string;
+  plan: Plan;
   preferences: StudyPreferences;
   createdAt: string;
   // TODO: Production — replace demoSessionActive with a real JWT from

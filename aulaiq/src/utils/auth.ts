@@ -1,4 +1,4 @@
-import type { UserProfile, StudyPreferences } from '../types';
+import type { UserProfile, StudyPreferences, Plan } from '../types';
 
 // TODO: Production security — NEVER store passwords in localStorage (or anywhere client-side).
 // Passwords must be hashed server-side with bcrypt or argon2.
@@ -49,6 +49,9 @@ export function createDemoProfile(params: {
   institutionName: string;
   courseId: string;
   courseName: string;
+  year: number;
+  yearLabel: string;
+  plan?: Plan;
   preferences: StudyPreferences;
 }): UserProfile {
   const profile: UserProfile = {
@@ -58,6 +61,9 @@ export function createDemoProfile(params: {
     institutionId: params.institutionId,
     course: params.courseName,
     courseId: params.courseId,
+    year: params.year,
+    yearLabel: params.yearLabel,
+    plan: params.plan ?? 'free',
     preferences: params.preferences,
     createdAt: new Date().toISOString(),
     demoSessionActive: true,
