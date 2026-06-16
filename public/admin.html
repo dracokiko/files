@@ -3,16 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Admin — Tutor de Estudo</title>
+  <title>Admin — AulaIQ</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f1f5f9; min-height: 100vh; }
 
     /* ── Login ── */
-    #login-screen {
-      display: flex; align-items: center; justify-content: center;
-      min-height: 100vh; padding: 20px;
-    }
+    #login-screen { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }
     .login-card {
       background: #fff; border-radius: 16px; padding: 40px;
       width: 100%; max-width: 360px; box-shadow: 0 4px 24px rgba(0,0,0,0.08);
@@ -24,13 +21,13 @@
     /* ── Header ── */
     header {
       background: #1e293b; color: #fff;
-      display: flex; align-items: center; gap: 16px;
-      padding: 0 24px; height: 56px; flex-shrink: 0;
+      display: flex; align-items: center; gap: 8px;
+      padding: 0 24px; height: 56px; flex-shrink: 0; flex-wrap: wrap;
     }
-    header .brand { font-weight: 700; font-size: 1rem; margin-right: auto; }
+    header .brand { font-weight: 700; font-size: 1rem; margin-right: 8px; }
     .tab-btn {
       background: none; border: none; color: #94a3b8; cursor: pointer;
-      font-size: 0.9rem; font-weight: 500; padding: 8px 14px; border-radius: 8px;
+      font-size: 0.875rem; font-weight: 500; padding: 8px 12px; border-radius: 8px;
       transition: all 0.15s;
     }
     .tab-btn:hover   { color: #fff; background: rgba(255,255,255,0.08); }
@@ -38,25 +35,21 @@
     .btn-logout {
       background: none; border: 1px solid #475569; color: #94a3b8;
       cursor: pointer; font-size: 0.8rem; padding: 5px 12px; border-radius: 6px;
-      transition: all 0.15s; margin-left: 8px;
+      transition: all 0.15s; margin-left: auto;
     }
     .btn-logout:hover { border-color: #94a3b8; color: #fff; }
 
     /* ── Main layout ── */
     #admin-screen { display: none; flex-direction: column; min-height: 100vh; }
-    main { flex: 1; padding: 28px 24px; max-width: 960px; margin: 0 auto; width: 100%; }
-
+    main { flex: 1; padding: 28px 24px; max-width: 980px; margin: 0 auto; width: 100%; }
     .tab-content { display: none; }
     .tab-content.active { display: block; }
 
     /* ── Section header ── */
-    .section-header {
-      display: flex; align-items: center; justify-content: space-between;
-      margin-bottom: 20px;
-    }
+    .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
     .section-header h2 { font-size: 1.2rem; color: #1e293b; }
 
-    /* ── Filters bar ── */
+    /* ── Filters ── */
     .filters { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
 
     /* ── Inputs & buttons ── */
@@ -82,6 +75,34 @@
     .btn-danger:hover   { background: #fee2e2; }
     .btn-ghost    { background: #f1f5f9; color: #475569; }
     .btn-ghost:hover    { background: #e2e8f0; }
+    .btn-sm { padding: 6px 12px; font-size: 0.8rem; }
+
+    /* ── Card grid ── */
+    .card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 28px; }
+    .metric-card {
+      background: #fff; border-radius: 12px; padding: 20px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    }
+    .metric-card .label { font-size: 0.75rem; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; }
+    .metric-card .value { font-size: 2rem; font-weight: 700; color: #1e293b; margin-top: 4px; }
+    .metric-card .sub   { font-size: 0.8rem; color: #94a3b8; margin-top: 2px; }
+
+    /* ── Tables ── */
+    .data-table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.06); margin-bottom: 24px; }
+    .data-table th { background: #f8fafc; padding: 10px 14px; text-align: left; font-size: 0.75rem; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.04em; border-bottom: 1px solid #e2e8f0; }
+    .data-table td { padding: 10px 14px; font-size: 0.875rem; color: #1e293b; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+    .data-table tr:last-child td { border-bottom: none; }
+    .data-table tr:hover td { background: #f8fafc; }
+
+    /* ── Status badges ── */
+    .badge {
+      display: inline-block; padding: 2px 10px; border-radius: 20px;
+      font-size: 0.75rem; font-weight: 600;
+    }
+    .badge-completed  { background: #dcfce7; color: #166534; }
+    .badge-processing { background: #dbeafe; color: #1d4ed8; }
+    .badge-pending    { background: #f1f5f9; color: #475569; }
+    .badge-failed     { background: #fef2f2; color: #dc2626; }
 
     /* ── List ── */
     .item-list { display: flex; flex-direction: column; gap: 8px; }
@@ -104,10 +125,7 @@
     .item-meta { font-size: 0.8rem; color: #64748b; }
     .item-actions { display: flex; gap: 6px; }
 
-    .empty-state {
-      text-align: center; padding: 48px 20px; color: #94a3b8;
-      background: #fff; border-radius: 10px;
-    }
+    .empty-state { text-align: center; padding: 48px 20px; color: #94a3b8; background: #fff; border-radius: 10px; }
     .empty-state .icon { font-size: 2rem; margin-bottom: 8px; }
 
     /* ── Modal ── */
@@ -122,15 +140,9 @@
       width: 100%; max-width: 540px; max-height: 90vh;
       overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.2);
     }
-    .modal-header {
-      display: flex; align-items: center; justify-content: space-between;
-      margin-bottom: 24px;
-    }
+    .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
     .modal-header h3 { font-size: 1.1rem; color: #1e293b; }
-    .btn-close {
-      background: none; border: none; cursor: pointer; color: #94a3b8;
-      font-size: 1.3rem; line-height: 1; padding: 4px;
-    }
+    .btn-close { background: none; border: none; cursor: pointer; color: #94a3b8; font-size: 1.3rem; line-height: 1; padding: 4px; }
     .btn-close:hover { color: #1e293b; }
     .form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
     .form-group label { font-size: 0.8rem; font-weight: 600; color: #475569; text-transform: uppercase; letter-spacing: 0.04em; }
@@ -143,31 +155,47 @@
       color: #64748b; font-size: 0.875rem;
     }
     .img-upload-area:hover { border-color: #3b82f6; }
-    .img-preview {
-      width: 100%; max-height: 160px; object-fit: cover;
-      border-radius: 8px; margin-top: 12px; display: none;
-    }
+    .img-preview { width: 100%; max-height: 160px; object-fit: cover; border-radius: 8px; margin-top: 12px; display: none; }
     .img-url-row { display: flex; gap: 8px; align-items: center; margin-top: 10px; }
     .img-url-row span { font-size: 0.8rem; color: #94a3b8; white-space: nowrap; }
 
-    /* ── Upload de resumos ── */
+    /* ── File drop area ── */
     .resumo-drop-area {
       border: 2px dashed #e2e8f0; border-radius: 10px; padding: 22px;
       text-align: center; cursor: pointer; transition: all 0.15s;
       color: #64748b; font-size: 0.875rem; line-height: 1.6;
     }
-    .resumo-drop-area:hover, .resumo-drop-area.drag-over {
-      border-color: #3b82f6; background: #f8faff; color: #2563eb;
-    }
+    .resumo-drop-area:hover, .resumo-drop-area.drag-over { border-color: #3b82f6; background: #f8faff; color: #2563eb; }
     .files-list { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
-    .file-item {
-      display: flex; align-items: center; gap: 8px;
-      padding: 7px 12px; border-radius: 8px; font-size: 0.825rem;
-    }
+    .file-item { display: flex; align-items: center; gap: 8px; padding: 7px 12px; border-radius: 8px; font-size: 0.825rem; }
     .file-item.loading { background: #f8fafc; color: #64748b; }
     .file-item.success { background: #f0fdf4; color: #166534; }
     .file-item.error   { background: #fef2f2; color: #dc2626; }
     .file-item .fname  { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    /* ── Knowledge result panel ── */
+    .result-panel {
+      background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px;
+      padding: 20px; margin-top: 16px; font-size: 0.875rem;
+    }
+    .result-section { margin-bottom: 16px; }
+    .result-section h4 { font-size: 0.8rem; font-weight: 700; color: #3b82f6; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+    .result-section p, .result-section li { color: #374151; line-height: 1.6; }
+    .result-section ul { padding-left: 16px; }
+    .result-section li { margin-bottom: 4px; }
+    .result-tag {
+      display: inline-block; background: #eff6ff; color: #1d4ed8;
+      padding: 2px 10px; border-radius: 20px; font-size: 0.75rem; margin: 2px;
+    }
+    .quality-alta   { color: #166534; }
+    .quality-media  { color: #92400e; }
+    .quality-baixa  { color: #991b1b; }
+
+    /* ── Sub-navigation for Knowledge tab ── */
+    .subnav { display: flex; gap: 8px; margin-bottom: 24px; border-bottom: 1px solid #e2e8f0; padding-bottom: 12px; }
+    .subnav-btn { background: none; border: none; cursor: pointer; font-size: 0.875rem; font-weight: 500; padding: 6px 14px; border-radius: 8px; color: #64748b; transition: all 0.15s; }
+    .subnav-btn.active { background: #eff6ff; color: #2563eb; }
+    .subnav-btn:hover:not(.active) { background: #f1f5f9; color: #1e293b; }
 
     /* ── Toast ── */
     #toast {
@@ -179,6 +207,12 @@
     #toast.show { opacity: 1; transform: translateY(0); }
     #toast.success { background: #022c22; color: #4ade80; }
     #toast.error   { background: #450a0a; color: #f87171; }
+
+    /* ── Section heading ── */
+    .section-heading { font-size: 1rem; font-weight: 700; color: #1e293b; margin-bottom: 12px; margin-top: 4px; }
+
+    .form-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+    @media (max-width: 600px) { .form-row { grid-template-columns: 1fr; } .card-grid { grid-template-columns: 1fr 1fr; } }
   </style>
 </head>
 <body>
@@ -198,15 +232,20 @@
 <!-- ── Dashboard ── -->
 <div id="admin-screen">
   <header>
-    <span class="brand">🔧 Tutor Admin</span>
-    <button class="tab-btn active" data-tab="faculdades" onclick="showTab('faculdades')">Faculdades</button>
-    <button class="tab-btn"        data-tab="cursos"     onclick="showTab('cursos')">Cursos</button>
-    <button class="tab-btn"        data-tab="cadeiras"   onclick="showTab('cadeiras')">Cadeiras</button>
+    <span class="brand">🔧 AulaIQ Admin</span>
+    <button class="tab-btn active" data-tab="faculdades"  onclick="showTab('faculdades')">Faculdades</button>
+    <button class="tab-btn"        data-tab="cursos"      onclick="showTab('cursos')">Cursos</button>
+    <button class="tab-btn"        data-tab="cadeiras"    onclick="showTab('cadeiras')">Cadeiras</button>
+    <button class="tab-btn"        data-tab="conhecimento" onclick="showTab('conhecimento')">Conhecimento</button>
+    <button class="tab-btn"        data-tab="metricas"    onclick="showTab('metricas')">Métricas</button>
     <button class="btn-logout" onclick="logout()">Sair</button>
   </header>
 
   <main>
-    <!-- Faculdades -->
+
+    <!-- ════════════════════════════════════════════════════════════════════════
+         FACULDADES
+    ═════════════════════════════════════════════════════════════════════════ -->
     <div id="tab-faculdades" class="tab-content active">
       <div class="section-header">
         <h2>Faculdades</h2>
@@ -215,7 +254,9 @@
       <div id="list-faculdades" class="item-list"></div>
     </div>
 
-    <!-- Cursos -->
+    <!-- ════════════════════════════════════════════════════════════════════════
+         CURSOS
+    ═════════════════════════════════════════════════════════════════════════ -->
     <div id="tab-cursos" class="tab-content">
       <div class="section-header">
         <h2>Cursos</h2>
@@ -229,7 +270,9 @@
       <div id="list-cursos" class="item-list"></div>
     </div>
 
-    <!-- Cadeiras -->
+    <!-- ════════════════════════════════════════════════════════════════════════
+         CADEIRAS
+    ═════════════════════════════════════════════════════════════════════════ -->
     <div id="tab-cadeiras" class="tab-content">
       <div class="section-header">
         <h2>Cadeiras</h2>
@@ -245,11 +288,135 @@
       </div>
       <div id="list-cadeiras" class="item-list"></div>
     </div>
+
+    <!-- ════════════════════════════════════════════════════════════════════════
+         CONHECIMENTO — Knowledge ingestion pipeline
+    ═════════════════════════════════════════════════════════════════════════ -->
+    <div id="tab-conhecimento" class="tab-content">
+      <div class="section-header"><h2>Base de Conhecimento</h2></div>
+
+      <div class="subnav">
+        <button class="subnav-btn active" id="sub-btn-novo" onclick="showKnowledgeSub('novo')">+ Processar Material</button>
+        <button class="subnav-btn" id="sub-btn-biblioteca" onclick="showKnowledgeSub('biblioteca')">Biblioteca</button>
+      </div>
+
+      <!-- ── Processar Novo ── -->
+      <div id="knowledge-novo">
+        <div style="max-width:700px">
+
+          <div class="form-group">
+            <label>Cadeira</label>
+            <select id="k-cadeira-id">
+              <option value="">— seleciona uma cadeira —</option>
+            </select>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Módulo / Capítulo</label>
+              <input type="text" id="k-modulo" placeholder="ex: Capítulo 1 — Oferta e Procura">
+            </div>
+            <div class="form-group">
+              <label>Ano Letivo</label>
+              <input type="text" id="k-ano-letivo" placeholder="ex: 2024/2025">
+            </div>
+            <div class="form-group">
+              <label>Plano</label>
+              <select id="k-plano">
+                <option value="free">Free</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Nome do material</label>
+            <input type="text" id="k-nome" placeholder="ex: Slides Microeconomia — Capítulo 1">
+          </div>
+
+          <div class="form-group">
+            <label>Ficheiros (PDF, Word, TXT)</label>
+            <div class="resumo-drop-area" id="k-drop-area" onclick="document.getElementById('k-files').click()">
+              📄 Clica ou arrasta ficheiros aqui
+              <br><span style="font-size:0.75rem;color:#94a3b8">PDF · Word (.docx) · TXT — extrai o texto automaticamente</span>
+              <input type="file" id="k-files" multiple accept=".pdf,.docx,.doc,.txt,text/plain,application/pdf" style="display:none" onchange="handleKFiles(this)">
+            </div>
+            <div id="k-files-list" class="files-list"></div>
+          </div>
+
+          <div class="form-group">
+            <label>Texto</label>
+            <textarea id="k-texto" style="min-height:220px" placeholder="O texto extraído dos ficheiros aparece aqui. Podes também colar ou escrever diretamente."></textarea>
+          </div>
+
+          <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+            <button class="btn btn-primary" id="k-process-btn" onclick="processarConhecimento()">
+              ⚡ Processar com IA
+            </button>
+            <span id="k-status" style="font-size:0.85rem;color:#64748b"></span>
+          </div>
+
+          <!-- Result shown here after processing -->
+          <div id="k-result" style="display:none;margin-top:20px"></div>
+        </div>
+      </div>
+
+      <!-- ── Biblioteca ── -->
+      <div id="knowledge-biblioteca" style="display:none">
+        <div class="filters">
+          <select id="k-filter-cadeira" onchange="loadBiblioteca()" style="max-width:300px">
+            <option value="">Todas as cadeiras</option>
+          </select>
+          <select id="k-filter-status" onchange="loadBiblioteca()" style="max-width:160px">
+            <option value="">Todos os estados</option>
+            <option value="completed">Concluído</option>
+            <option value="processing">A processar</option>
+            <option value="failed">Erro</option>
+            <option value="pending">Pendente</option>
+          </select>
+        </div>
+        <div id="k-biblioteca-list"></div>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════════════════════════
+         MÉTRICAS
+    ═════════════════════════════════════════════════════════════════════════ -->
+    <div id="tab-metricas" class="tab-content">
+      <div class="section-header"><h2>Métricas</h2>
+        <button class="btn btn-ghost btn-sm" onclick="loadMetricas()">↻ Atualizar</button>
+      </div>
+
+      <!-- Overview cards -->
+      <div class="card-grid" id="metrics-cards">
+        <div class="metric-card"><div class="label">A carregar...</div></div>
+      </div>
+
+      <!-- Top cadeiras by chat usage -->
+      <p class="section-heading">Top Cadeiras por Mensagens de Chat</p>
+      <div id="metrics-chat-table"></div>
+
+      <!-- Recent events -->
+      <p class="section-heading">Eventos Recentes</p>
+      <div class="filters">
+        <select id="m-filter-tipo" onchange="loadEventos()" style="max-width:260px">
+          <option value="">Todos os tipos</option>
+          <option value="chat_message_sent">chat_message_sent</option>
+          <option value="page_view">page_view</option>
+          <option value="signup_completed">signup_completed</option>
+          <option value="purchase_completed">purchase_completed</option>
+          <option value="material_processed">material_processed</option>
+        </select>
+      </div>
+      <div id="metrics-events-table"></div>
+    </div>
+
   </main>
 </div>
 
 <!-- ── Modal ── -->
-<div id="modal-overlay" onclick="e => { if(e.target===this) closeModal() }">
+<div id="modal-overlay" onclick="if(event.target===this)closeModal()">
   <div id="modal">
     <div class="modal-header">
       <h3 id="modal-title">Formulário</h3>
@@ -272,18 +439,18 @@
   let editingType = null
   let pendingFile = null
 
-  // ── Auth ──────────────────────────────────────────────────────────────────
+  // ── Auth ─────────────────────────────────────────────────────────────────────
   function showAdmin() {
     document.getElementById('login-screen').style.display = 'none'
-    document.getElementById('admin-screen').style.display = 'flex'
-    document.getElementById('admin-screen').style.flexDirection = 'column'
+    const s = document.getElementById('admin-screen')
+    s.style.display = 'flex'
+    s.style.flexDirection = 'column'
   }
 
   async function login() {
     const pwd = document.getElementById('pwd').value
     const res = await fetch('/admin/api/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ password: pwd }),
     })
     if (!res.ok) { document.getElementById('login-err').textContent = 'Password incorreta.'; return }
@@ -295,27 +462,27 @@
     fetch('/admin/api/logout', { method: 'POST' }).finally(() => location.reload())
   }
 
-  // ── Init ──────────────────────────────────────────────────────────────────
+  // ── Init ─────────────────────────────────────────────────────────────────────
   async function init() {
-    await loadFaculdades()
-    await loadCursos()
-    await loadCadeiras()
+    await Promise.all([loadFaculdades(), loadCursos(), loadCadeiras()])
     populateFaculdadeFilters()
+    populateKCadeiraSelect()
   }
 
-  // ── Tabs ──────────────────────────────────────────────────────────────────
+  // ── Tabs ─────────────────────────────────────────────────────────────────────
   function showTab(tab) {
     document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'))
     document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'))
     document.getElementById(`tab-${tab}`).classList.add('active')
     document.querySelector(`[data-tab="${tab}"]`).classList.add('active')
+    if (tab === 'metricas') loadMetricas()
+    if (tab === 'conhecimento') { populateKCadeiraSelect(); showKnowledgeSub('novo') }
   }
 
-  // ── API helper ────────────────────────────────────────────────────────────
+  // ── API helper ────────────────────────────────────────────────────────────────
   async function api(method, path, body) {
     const res = await fetch(path, {
-      method,
-      headers: { 'Content-Type': 'application/json' },
+      method, headers: { 'Content-Type': 'application/json' },
       credentials: 'same-origin',
       body: body ? JSON.stringify(body) : undefined,
     })
@@ -324,7 +491,7 @@
     return data
   }
 
-  // ── Upload de imagem ──────────────────────────────────────────────────────
+  // ── Image helpers ─────────────────────────────────────────────────────────────
   function fileToBase64(file) {
     return new Promise((resolve, reject) => {
       const reader = new FileReader()
@@ -343,7 +510,7 @@
     return urlInput.value.trim() || null
   }
 
-  // ── Load data ─────────────────────────────────────────────────────────────
+  // ── Load data ─────────────────────────────────────────────────────────────────
   async function loadFaculdades() {
     const data = await api('GET', '/admin/api/faculdades')
     faculdades = data
@@ -367,8 +534,8 @@
   }
 
   async function filterCursosCadeiras() {
-    const facId  = document.getElementById('filter-faculdade-cadeiras').value
-    const sel    = document.getElementById('filter-curso-cadeiras')
+    const facId = document.getElementById('filter-faculdade-cadeiras').value
+    const sel   = document.getElementById('filter-curso-cadeiras')
     sel.innerHTML = '<option value="">Todos os cursos</option>'
     if (facId) {
       const data = await api('GET', `/admin/api/cursos?faculdade_id=${facId}`)
@@ -388,7 +555,7 @@
     })
   }
 
-  // ── Render ────────────────────────────────────────────────────────────────
+  // ── Render lists ──────────────────────────────────────────────────────────────
   function imgEl(url, emoji = '🏛') {
     if (url) return `<img class="item-thumb" src="${url}" alt="">`
     return `<div class="item-thumb-placeholder">${emoji}</div>`
@@ -399,11 +566,11 @@
     if (!faculdades.length) { el.innerHTML = emptyState('Nenhuma faculdade ainda.'); return }
     el.innerHTML = faculdades.map(f => `
       <div class="item-row">
-        ${imgEl(f.imagem_url, '🏛')}
+        ${imgEl(f.imagem_url,'🏛')}
         <span class="item-name">${esc(f.nome)}</span>
         <div class="item-actions">
-          <button class="btn btn-ghost" onclick="openModal('faculdade','${f.id}')">Editar</button>
-          <button class="btn btn-danger" onclick="deleteItem('faculdade','${f.id}','${esc(f.nome)}')">Apagar</button>
+          <button class="btn btn-ghost btn-sm" onclick="openModal('faculdade','${f.id}')">Editar</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteItem('faculdade','${f.id}','${esc(f.nome)}')">Apagar</button>
         </div>
       </div>`).join('')
   }
@@ -415,14 +582,14 @@
       const fac = faculdades.find(f => f.id === c.faculdade_id)
       return `
         <div class="item-row">
-          ${imgEl(c.imagem_url, '📘')}
+          ${imgEl(c.imagem_url,'📘')}
           <div style="flex:1">
             <div class="item-name">${esc(c.nome)}</div>
             <div class="item-meta">${fac ? esc(fac.nome) : ''}</div>
           </div>
           <div class="item-actions">
-            <button class="btn btn-ghost" onclick="openModal('curso','${c.id}')">Editar</button>
-            <button class="btn btn-danger" onclick="deleteItem('curso','${c.id}','${esc(c.nome)}')">Apagar</button>
+            <button class="btn btn-ghost btn-sm" onclick="openModal('curso','${c.id}')">Editar</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteItem('curso','${c.id}','${esc(c.nome)}')">Apagar</button>
           </div>
         </div>`
     }).join('')
@@ -432,8 +599,8 @@
     const el = document.getElementById('list-cadeiras')
     if (!list.length) { el.innerHTML = emptyState('Nenhuma cadeira ainda.'); return }
     el.innerHTML = list.map(c => {
-      const curso   = cursos.find(x => x.id === c.curso_id)
-      const fac     = curso ? faculdades.find(f => f.id === curso.faculdade_id) : null
+      const curso = cursos.find(x => x.id === c.curso_id)
+      const fac   = curso ? faculdades.find(f => f.id === curso.faculdade_id) : null
       const preview = c.conteudo ? c.conteudo.slice(0, 60) + '…' : '(sem conteúdo)'
       return `
         <div class="item-row">
@@ -444,8 +611,8 @@
             <div class="item-meta" style="margin-top:2px">${esc(preview)}</div>
           </div>
           <div class="item-actions">
-            <button class="btn btn-ghost" onclick='openModal("cadeira","${c.id}")'>Editar</button>
-            <button class="btn btn-danger" onclick='deleteItem("cadeira","${c.id}","${esc(c.nome)}")'>Apagar</button>
+            <button class="btn btn-ghost btn-sm" onclick='openModal("cadeira","${c.id}")'>Editar</button>
+            <button class="btn btn-danger btn-sm" onclick='deleteItem("cadeira","${c.id}","${esc(c.nome)}")'>Apagar</button>
           </div>
         </div>`
     }).join('')
@@ -455,82 +622,61 @@
     return `<div class="empty-state"><div class="icon">📭</div><p>${msg}</p></div>`
   }
 
-  // ── Modal ─────────────────────────────────────────────────────────────────
+  // ── Modal ─────────────────────────────────────────────────────────────────────
   function openModal(type, id = null) {
-    editingType = type
-    editingId   = id
-    pendingFile = null
-
+    editingType = type; editingId = id; pendingFile = null
     const titles = { faculdade: 'Faculdade', curso: 'Curso', cadeira: 'Cadeira' }
     document.getElementById('modal-title').textContent = (id ? 'Editar ' : 'Nova ') + titles[type]
-
     let body = ''
 
     if (type === 'curso' || type === 'cadeira') {
       const opts = faculdades.map(f => `<option value="${f.id}">${esc(f.nome)}</option>`).join('')
-      body += `<div class="form-group">
-        <label>Faculdade</label>
-        <select id="modal-faculdade" onchange="loadCursosModal()">${opts}</select>
-      </div>`
+      body += `<div class="form-group"><label>Faculdade</label>
+        <select id="modal-faculdade" onchange="loadCursosModal()">${opts}</select></div>`
     }
-
     if (type === 'cadeira') {
-      body += `<div class="form-group">
-        <label>Curso</label>
-        <select id="modal-curso"><option value="">A carregar...</option></select>
-      </div>`
+      body += `<div class="form-group"><label>Curso</label>
+        <select id="modal-curso"><option value="">A carregar...</option></select></div>`
     }
-
-    body += `<div class="form-group">
-      <label>Nome</label>
-      <input type="text" id="modal-nome" placeholder="Nome">
-    </div>`
+    body += `<div class="form-group"><label>Nome</label><input type="text" id="modal-nome" placeholder="Nome"></div>`
 
     if (type !== 'cadeira') {
-      body += `<div class="form-group">
-        <label>Imagem</label>
+      body += `<div class="form-group"><label>Imagem</label>
         <div class="img-upload-area" onclick="document.getElementById('modal-file').click()">
           📎 Clica para escolher um ficheiro
           <input type="file" id="modal-file" accept="image/*" style="display:none" onchange="previewFile(this)">
         </div>
         <img id="img-preview" class="img-preview" alt="Preview">
-        <div class="img-url-row">
-          <span>ou URL:</span>
+        <div class="img-url-row"><span>ou URL:</span>
           <input type="text" id="modal-img-url" placeholder="https://..." oninput="previewUrl(this.value)">
-        </div>
-      </div>`
+        </div></div>`
     }
 
     if (type === 'cadeira') {
-      body += `<div class="form-group">
-        <label>Ficheiros de Resumos</label>
+      body += `<div class="form-group"><label>Ficheiros de Resumos</label>
         <div class="resumo-drop-area" id="resumo-drop-area" onclick="document.getElementById('resumo-files').click()">
           📄 Clica ou arrasta ficheiros aqui<br>
-          <span style="font-size:0.75rem;color:#94a3b8">PDF · Word (.docx) · TXT — vários ficheiros de uma vez</span>
+          <span style="font-size:0.75rem;color:#94a3b8">PDF · Word (.docx) · TXT</span>
           <input type="file" id="resumo-files" multiple accept=".pdf,.docx,.doc,.txt,text/plain,application/pdf" style="display:none" onchange="handleResumoFiles(this)">
         </div>
-        <div id="files-list" class="files-list"></div>
-      </div>
-      <div class="form-group">
-        <label>Conteúdo extraído</label>
-        <textarea id="modal-conteudo" placeholder="O texto extraído dos ficheiros aparece aqui. Podes também colar ou escrever diretamente." style="min-height:260px"></textarea>
+        <div id="files-list" class="files-list"></div></div>
+      <div class="form-group"><label>Conteúdo extraído</label>
+        <textarea id="modal-conteudo" placeholder="Texto extraído ou colado manualmente." style="min-height:260px"></textarea>
       </div>`
     }
 
     document.getElementById('modal-body').innerHTML = body
 
-    // Drag-drop para upload de resumos
     if (type === 'cadeira') {
       const area = document.getElementById('resumo-drop-area')
       area.addEventListener('dragover',  e => { e.preventDefault(); area.classList.add('drag-over') })
-      area.addEventListener('dragleave', ()  => area.classList.remove('drag-over'))
+      area.addEventListener('dragleave', () => area.classList.remove('drag-over'))
       area.addEventListener('drop', e => {
         e.preventDefault(); area.classList.remove('drag-over')
         processResumoFiles(Array.from(e.dataTransfer.files))
       })
     }
 
-    // Pre-fill se editar
     if (id) {
       if (type === 'faculdade') {
         const item = faculdades.find(f => f.id === id)
@@ -555,19 +701,16 @@
           loadCursosModal()
         }
       } else if (type === 'cadeira') {
-        // Load cadeira from server to get conteudo
-        api('GET', `/admin/api/cadeiras`).then(list => {
+        api('GET', '/admin/api/cadeiras').then(list => {
           const item = list.find(c => c.id === id)
           if (!item) return
           const c = cursos.find(x => x.id === item.curso_id)
           if (c) {
             document.getElementById('modal-faculdade').value = c.faculdade_id
-            loadCursosModal().then(() => {
-              document.getElementById('modal-curso').value = item.curso_id
-            })
+            loadCursosModal().then(() => { document.getElementById('modal-curso').value = item.curso_id })
           }
           document.getElementById('modal-nome').value     = item.nome
-          document.getElementById('modal-conteudo').value = item.conteudo
+          document.getElementById('modal-conteudo').value = item.conteudo || ''
         })
       }
     } else {
@@ -588,18 +731,15 @@
   }
 
   function previewFile(input) {
-    const file = input.files[0]
-    if (!file) return
+    const file = input.files[0]; if (!file) return
     pendingFile = file
     const prev = document.getElementById('img-preview')
-    prev.src = URL.createObjectURL(file)
-    prev.style.display = 'block'
+    prev.src = URL.createObjectURL(file); prev.style.display = 'block'
   }
 
   function previewUrl(url) {
     const prev = document.getElementById('img-preview')
-    if (url) { prev.src = url; prev.style.display = 'block' }
-    else prev.style.display = 'none'
+    if (url) { prev.src = url; prev.style.display = 'block' } else prev.style.display = 'none'
     pendingFile = null
   }
 
@@ -610,9 +750,7 @@
 
   async function saveForm() {
     const btn = document.getElementById('btn-save')
-    btn.disabled = true
-    btn.textContent = 'A guardar...'
-
+    btn.disabled = true; btn.textContent = 'A guardar...'
     try {
       const nome = document.getElementById('modal-nome').value.trim()
       if (!nome) { toast('O nome é obrigatório.', 'error'); return }
@@ -622,7 +760,6 @@
         if (editingId) await api('PUT', `/admin/api/faculdades/${editingId}`, { nome, imagem_url })
         else           await api('POST', '/admin/api/faculdades', { nome, imagem_url })
         await loadFaculdades()
-
       } else if (editingType === 'curso') {
         const faculdade_id = document.getElementById('modal-faculdade').value
         if (!faculdade_id) { toast('Seleciona a faculdade.', 'error'); return }
@@ -630,7 +767,6 @@
         if (editingId) await api('PUT', `/admin/api/cursos/${editingId}`, { faculdade_id, nome, imagem_url })
         else           await api('POST', '/admin/api/cursos', { faculdade_id, nome, imagem_url })
         await loadCursos()
-
       } else if (editingType === 'cadeira') {
         const curso_id = document.getElementById('modal-curso').value
         if (!curso_id) { toast('Seleciona o curso.', 'error'); return }
@@ -640,13 +776,11 @@
         await loadCadeiras()
       }
 
-      closeModal()
-      toast('Guardado com sucesso!', 'success')
+      closeModal(); toast('Guardado com sucesso!', 'success')
     } catch (err) {
       toast(err.message, 'error')
     } finally {
-      btn.disabled = false
-      btn.textContent = 'Guardar'
+      btn.disabled = false; btn.textContent = 'Guardar'
     }
   }
 
@@ -659,31 +793,22 @@
       else if (type === 'curso') await loadCursos()
       else await loadCadeiras()
       toast('Apagado.', 'success')
-    } catch (err) {
-      toast(err.message, 'error')
-    }
+    } catch (err) { toast(err.message, 'error') }
   }
 
-  // ── Upload de resumos ─────────────────────────────────────────────────────
-  function handleResumoFiles(input) {
-    processResumoFiles(Array.from(input.files))
-    input.value = ''
-  }
+  // ── Upload de resumos (cadeira modal) ─────────────────────────────────────────
+  function handleResumoFiles(input) { processResumoFiles(Array.from(input.files)); input.value = '' }
 
   async function processResumoFiles(files) {
-    const listEl    = document.getElementById('files-list')
+    const listEl     = document.getElementById('files-list')
     const conteudoEl = document.getElementById('modal-conteudo')
     if (!listEl || !conteudoEl) return
-
     for (const file of files) {
-      if (file.size > 30 * 1024 * 1024) {
-        toast(`"${file.name}" excede 30 MB — ignorado.`, 'error'); continue
-      }
+      if (file.size > 30 * 1024 * 1024) { toast(`"${file.name}" excede 30 MB — ignorado.`, 'error'); continue }
       const itemEl = document.createElement('div')
       itemEl.className = 'file-item loading'
       itemEl.innerHTML = `<span>⏳</span><span class="fname">${esc(file.name)}</span><span style="color:#94a3b8">${(file.size/1024/1024).toFixed(1)} MB</span>`
       listEl.appendChild(itemEl)
-
       try {
         const base64 = await fileToBase64(file)
         const result = await api('POST', '/admin/api/extract-text', { base64, mimeType: file.type || '', filename: file.name })
@@ -699,23 +824,351 @@
     }
   }
 
-  // ── Toast ─────────────────────────────────────────────────────────────────
+  // ══════════════════════════════════════════════════════════════════════════════
+  // KNOWLEDGE INGESTION TAB
+  // ══════════════════════════════════════════════════════════════════════════════
+
+  function showKnowledgeSub(sub) {
+    document.getElementById('knowledge-novo').style.display       = sub === 'novo'       ? 'block' : 'none'
+    document.getElementById('knowledge-biblioteca').style.display = sub === 'biblioteca' ? 'block' : 'none'
+    document.getElementById('sub-btn-novo').classList.toggle('active', sub === 'novo')
+    document.getElementById('sub-btn-biblioteca').classList.toggle('active', sub === 'biblioteca')
+    if (sub === 'biblioteca') loadBiblioteca()
+  }
+
+  // Populate the cadeira select in the Knowledge tab from the already-loaded cursos/faculdades
+  async function populateKCadeiraSelect() {
+    const sel = document.getElementById('k-cadeira-id')
+    if (!sel) return
+    // Load all cadeiras
+    let all = []
+    try { all = await api('GET', '/admin/api/cadeiras') } catch {}
+    sel.innerHTML = '<option value="">— seleciona uma cadeira —</option>'
+    all.forEach(c => sel.add(new Option(c.nome, c.id)))
+
+    // Also populate the biblioteca filter
+    const bSel = document.getElementById('k-filter-cadeira')
+    if (bSel) {
+      bSel.innerHTML = '<option value="">Todas as cadeiras</option>'
+      all.forEach(c => bSel.add(new Option(c.nome, c.id)))
+    }
+  }
+
+  // Handle file uploads in the Knowledge tab (reuses the existing extract-text endpoint)
+  function handleKFiles(input) {
+    processKFiles(Array.from(input.files)); input.value = ''
+  }
+
+  async function processKFiles(files) {
+    const listEl  = document.getElementById('k-files-list')
+    const textoEl = document.getElementById('k-texto')
+    for (const file of files) {
+      if (file.size > 30 * 1024 * 1024) { toast(`"${file.name}" excede 30 MB — ignorado.`, 'error'); continue }
+      const itemEl = document.createElement('div')
+      itemEl.className = 'file-item loading'
+      itemEl.innerHTML = `<span>⏳</span><span class="fname">${esc(file.name)}</span><span style="color:#94a3b8">${(file.size/1024/1024).toFixed(1)} MB</span>`
+      listEl.appendChild(itemEl)
+      try {
+        const base64 = await fileToBase64(file)
+        const result = await api('POST', '/admin/api/extract-text', { base64, mimeType: file.type || '', filename: file.name })
+        const existing = textoEl.value.trim()
+        textoEl.value = existing ? existing + '\n\n' + result.text : result.text
+        itemEl.className = 'file-item success'
+        itemEl.querySelector('span').textContent = '✅'
+      } catch (err) {
+        itemEl.className = 'file-item error'
+        itemEl.querySelector('span').textContent = '❌'
+        itemEl.querySelector('.fname').textContent += ` — ${err.message}`
+      }
+    }
+
+    // Set up drag-drop on the knowledge drop area
+    const area = document.getElementById('k-drop-area')
+    if (area && !area._ddReady) {
+      area._ddReady = true
+      area.addEventListener('dragover',  e => { e.preventDefault(); area.classList.add('drag-over') })
+      area.addEventListener('dragleave', () => area.classList.remove('drag-over'))
+      area.addEventListener('drop', e => {
+        e.preventDefault(); area.classList.remove('drag-over')
+        processKFiles(Array.from(e.dataTransfer.files))
+      })
+    }
+  }
+
+  let kPollInterval = null
+
+  async function processarConhecimento() {
+    const cadeira_id = document.getElementById('k-cadeira-id').value
+    const texto      = document.getElementById('k-texto').value.trim()
+    const nome       = document.getElementById('k-nome').value.trim()
+    const modulo     = document.getElementById('k-modulo').value.trim()
+    const ano_letivo = document.getElementById('k-ano-letivo').value.trim()
+    const plano      = document.getElementById('k-plano').value
+
+    if (!cadeira_id) { toast('Seleciona uma cadeira.', 'error'); return }
+    if (!texto)      { toast('Adiciona texto para processar.', 'error'); return }
+
+    const btn    = document.getElementById('k-process-btn')
+    const status = document.getElementById('k-status')
+    const result = document.getElementById('k-result')
+
+    btn.disabled = true; btn.textContent = '⏳ A enviar...'
+    status.textContent = ''; result.style.display = 'none'
+
+    try {
+      const data = await api('POST', '/admin/api/knowledge/process', {
+        cadeira_id, nome: nome || 'Material', modulo, ano_letivo, plano, texto,
+      })
+
+      btn.textContent = '⏳ A processar...'
+      status.textContent = `ID: ${data.id} · A aguardar IA...`
+
+      // Poll until status changes from 'processing'
+      clearInterval(kPollInterval)
+      kPollInterval = setInterval(async () => {
+        try {
+          const mat = await api('GET', `/admin/api/knowledge/${data.id}`)
+          if (mat.status === 'completed') {
+            clearInterval(kPollInterval)
+            btn.disabled = false; btn.textContent = '⚡ Processar com IA'
+            status.textContent = '✅ Processado com sucesso!'
+            renderKResult(mat.processado, result)
+            // Clear inputs for next upload
+            document.getElementById('k-texto').value = ''
+            document.getElementById('k-nome').value  = ''
+            document.getElementById('k-modulo').value = ''
+            document.getElementById('k-files-list').innerHTML = ''
+            toast('Material processado com sucesso!', 'success')
+          } else if (mat.status === 'failed') {
+            clearInterval(kPollInterval)
+            btn.disabled = false; btn.textContent = '⚡ Processar com IA'
+            status.textContent = `❌ Erro: ${mat.erro}`
+            toast('Erro no processamento.', 'error')
+          }
+        } catch {}
+      }, 3000)
+
+    } catch (err) {
+      btn.disabled = false; btn.textContent = '⚡ Processar com IA'
+      toast(err.message, 'error')
+    }
+  }
+
+  function renderKResult(processado, container) {
+    if (!processado) return
+    container.style.display = 'block'
+    const qualityClass = { alta: 'quality-alta', media: 'quality-media', baixa: 'quality-baixa' }[processado.metadata?.qualidade] || ''
+
+    let html = `<div class="result-panel">`
+
+    // Metadata header
+    html += `<div class="result-section">
+      <h4>Metadados</h4>
+      <p>Qualidade: <strong class="${qualityClass}">${processado.metadata?.qualidade || '—'}</strong>
+         &nbsp;·&nbsp; Tipo: ${processado.metadata?.tipo_material || '—'}
+         &nbsp;·&nbsp; Completude: ${processado.metadata?.completude || '—'}</p>
+      ${processado.metadata?.avisos?.length ? `<p style="color:#92400e;margin-top:6px">⚠️ ${processado.metadata.avisos.join(' · ')}</p>` : ''}</div>`
+
+    // Summary
+    if (processado.resumo) html += `<div class="result-section"><h4>Resumo</h4><p>${esc(processado.resumo)}</p></div>`
+
+    // Key concepts
+    if (processado.conceitos_chave?.length) {
+      html += `<div class="result-section"><h4>Conceitos Chave (${processado.conceitos_chave.length})</h4>
+        ${processado.conceitos_chave.map(c => `<span class="result-tag">${esc(c)}</span>`).join('')}</div>`
+    }
+
+    // Definitions
+    if (processado.definicoes?.length) {
+      html += `<div class="result-section"><h4>Definições (${processado.definicoes.length})</h4><ul>`
+      processado.definicoes.forEach(d => { html += `<li><strong>${esc(d.termo)}:</strong> ${esc(d.definicao)}</li>` })
+      html += `</ul></div>`
+    }
+
+    // Formulas
+    if (processado.formulas?.length) {
+      html += `<div class="result-section"><h4>Fórmulas (${processado.formulas.length})</h4><ul>`
+      processado.formulas.forEach(f => { html += `<li><strong>${esc(f.nome)}:</strong> <code>${esc(f.formula)}</code> — ${esc(f.explicacao)}</li>` })
+      html += `</ul></div>`
+    }
+
+    // Exam questions
+    if (processado.perguntas_exame?.length) {
+      html += `<div class="result-section"><h4>Perguntas de Exame (${processado.perguntas_exame.length})</h4><ul>`
+      processado.perguntas_exame.forEach(p => {
+        html += `<li><span class="badge badge-${p.dificuldade === 'dificil' ? 'failed' : p.dificuldade === 'medio' ? 'processing' : 'completed'}">${p.dificuldade}</span> ${esc(p.pergunta)}</li>`
+      })
+      html += `</ul></div>`
+    }
+
+    // Q&A count
+    if (processado.qa_estruturado?.length) {
+      html += `<div class="result-section"><h4>Q&A Estruturado (${processado.qa_estruturado.length} pares)</h4>
+        <p style="color:#64748b;font-size:0.8rem">Guardado e disponível para o chatbot.</p></div>`
+    }
+
+    html += `</div>`
+    container.innerHTML = html
+  }
+
+  // ── Knowledge Biblioteca ──────────────────────────────────────────────────────
+  async function loadBiblioteca() {
+    const listEl    = document.getElementById('k-biblioteca-list')
+    const cadeiraId = document.getElementById('k-filter-cadeira')?.value
+    const status    = document.getElementById('k-filter-status')?.value
+
+    listEl.innerHTML = '<p style="color:#64748b;font-size:0.875rem">A carregar...</p>'
+
+    let url = '/admin/api/knowledge'
+    const params = []
+    if (cadeiraId) params.push(`cadeira_id=${cadeiraId}`)
+    if (status)    params.push(`status=${status}`)
+    if (params.length) url += '?' + params.join('&')
+
+    try {
+      const data = await api('GET', url)
+      if (!data.length) { listEl.innerHTML = emptyState('Nenhum material ainda.'); return }
+
+      listEl.innerHTML = `<table class="data-table">
+        <thead><tr>
+          <th>Nome</th><th>Cadeira</th><th>Módulo</th><th>Plano</th><th>Estado</th><th>Data</th><th></th>
+        </tr></thead>
+        <tbody>${data.map(m => `
+          <tr>
+            <td>${esc(m.nome)}</td>
+            <td>${esc(m.cadeiras?.nome || '—')}</td>
+            <td>${esc(m.modulo || '—')}</td>
+            <td><span class="badge badge-pending">${m.plano}</span></td>
+            <td><span class="badge badge-${m.status}">${m.status}</span></td>
+            <td style="color:#64748b;font-size:0.8rem">${new Date(m.created_at).toLocaleDateString('pt-PT')}</td>
+            <td>
+              <div style="display:flex;gap:6px">
+                ${m.status === 'completed' ? `<button class="btn btn-ghost btn-sm" onclick="viewMaterial('${m.id}')">Ver</button>` : ''}
+                ${m.status === 'failed'    ? `<button class="btn btn-ghost btn-sm" onclick="reprocessMaterial('${m.id}')">Reprocessar</button>` : ''}
+                <button class="btn btn-danger btn-sm" onclick="deleteMaterial('${m.id}','${esc(m.nome)}')">Apagar</button>
+              </div>
+            </td>
+          </tr>`).join('')}
+        </tbody>
+      </table>`
+    } catch (err) { listEl.innerHTML = `<p style="color:#dc2626">${err.message}</p>` }
+  }
+
+  async function viewMaterial(id) {
+    try {
+      const mat = await api('GET', `/admin/api/knowledge/${id}`)
+      const win = window.open('', '_blank')
+      win.document.write(`<pre style="font-family:monospace;padding:20px;white-space:pre-wrap">${JSON.stringify(mat.processado, null, 2)}</pre>`)
+    } catch (err) { toast(err.message, 'error') }
+  }
+
+  async function reprocessMaterial(id) {
+    try {
+      await api('POST', `/admin/api/knowledge/${id}/reprocess`)
+      toast('Reprocessamento iniciado.', 'success')
+      loadBiblioteca()
+    } catch (err) { toast(err.message, 'error') }
+  }
+
+  async function deleteMaterial(id, nome) {
+    if (!confirm(`Apagar "${nome}"?`)) return
+    try {
+      await api('DELETE', `/admin/api/knowledge/${id}`)
+      toast('Apagado.', 'success')
+      loadBiblioteca()
+    } catch (err) { toast(err.message, 'error') }
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════════
+  // METRICS TAB
+  // ══════════════════════════════════════════════════════════════════════════════
+
+  async function loadMetricas() {
+    await Promise.all([loadOverview(), loadChatStats(), loadEventos()])
+  }
+
+  async function loadOverview() {
+    const el = document.getElementById('metrics-cards')
+    try {
+      const d = await api('GET', '/admin/api/metrics/overview')
+      el.innerHTML = `
+        <div class="metric-card"><div class="label">Materiais Processados</div><div class="value">${d.materiais_processados}</div><div class="sub">de ${d.materiais_total} total</div></div>
+        <div class="metric-card"><div class="label">A Processar</div><div class="value">${d.materiais_pendentes}</div><div class="sub">${d.materiais_erro} com erro</div></div>
+        <div class="metric-card"><div class="label">Mensagens de Chat</div><div class="value">${d.chat_mensagens}</div><div class="sub">eventos rastreados</div></div>
+        <div class="metric-card"><div class="label">Total de Eventos</div><div class="value">${d.eventos_total}</div><div class="sub">desde o início</div></div>
+      `
+    } catch (err) { el.innerHTML = `<p style="color:#dc2626">${err.message}</p>` }
+  }
+
+  async function loadChatStats() {
+    const el = document.getElementById('metrics-chat-table')
+    try {
+      const data = await api('GET', '/admin/api/metrics/chat')
+      if (!data.length) { el.innerHTML = `<p style="color:#94a3b8;font-size:0.875rem">Ainda não há mensagens de chat rastreadas.</p>`; return }
+      el.innerHTML = `<table class="data-table">
+        <thead><tr><th>#</th><th>Cadeira</th><th>Mensagens</th></tr></thead>
+        <tbody>${data.map((row, i) => `
+          <tr>
+            <td style="color:#94a3b8">${i + 1}</td>
+            <td>${esc(row.nome)}</td>
+            <td><strong>${row.mensagens}</strong></td>
+          </tr>`).join('')}
+        </tbody>
+      </table>`
+    } catch (err) { el.innerHTML = `<p style="color:#dc2626">${err.message}</p>` }
+  }
+
+  async function loadEventos() {
+    const el   = document.getElementById('metrics-events-table')
+    const tipo = document.getElementById('m-filter-tipo')?.value
+    let url    = '/admin/api/metrics/events?limit=50'
+    if (tipo) url += `&tipo=${tipo}`
+    try {
+      const data = await api('GET', url)
+      if (!data.length) { el.innerHTML = `<p style="color:#94a3b8;font-size:0.875rem">Nenhum evento ainda.</p>`; return }
+      el.innerHTML = `<table class="data-table">
+        <thead><tr><th>Tipo</th><th>Cadeira</th><th>Plano</th><th>UTM Source</th><th>Data</th></tr></thead>
+        <tbody>${data.map(e => `
+          <tr>
+            <td><code style="font-size:0.8rem;background:#f1f5f9;padding:2px 6px;border-radius:4px">${esc(e.tipo)}</code></td>
+            <td>${esc(e.cadeiras?.nome || '—')}</td>
+            <td>${esc(e.plano || '—')}</td>
+            <td>${esc(e.utm_source || '—')}</td>
+            <td style="color:#64748b;font-size:0.8rem">${new Date(e.timestamp).toLocaleString('pt-PT')}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>`
+    } catch (err) { el.innerHTML = `<p style="color:#dc2626">${err.message}</p>` }
+  }
+
+  // ── Toast ─────────────────────────────────────────────────────────────────────
   function toast(msg, type = 'success') {
     const el = document.getElementById('toast')
-    el.textContent = msg
-    el.className = `show ${type}`
+    el.textContent = msg; el.className = `show ${type}`
     clearTimeout(el._t)
-    el._t = setTimeout(() => el.classList.remove('show'), 3000)
+    el._t = setTimeout(() => el.classList.remove('show'), 3500)
   }
 
   function esc(str) {
     return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')
   }
 
-  // ── Auto-login via cookie ─────────────────────────────────────────────────
+  // ── Auto-login via existing session cookie ────────────────────────────────────
   fetch('/admin/api/faculdades', { credentials: 'same-origin' })
     .then(r => { if (r.ok) { showAdmin(); init() } })
     .catch(() => {})
+
+  // Set up drag-drop on Knowledge drop area after DOM is ready
+  document.addEventListener('DOMContentLoaded', () => {
+    const area = document.getElementById('k-drop-area')
+    if (!area) return
+    area.addEventListener('dragover',  e => { e.preventDefault(); area.classList.add('drag-over') })
+    area.addEventListener('dragleave', () => area.classList.remove('drag-over'))
+    area.addEventListener('drop', e => {
+      e.preventDefault(); area.classList.remove('drag-over')
+      processKFiles(Array.from(e.dataTransfer.files))
+    })
+  })
 </script>
 
 </body>

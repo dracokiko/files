@@ -6,6 +6,8 @@ import { fileURLToPath } from 'url'
 import 'dotenv/config'
 import pdfParse from 'pdf-parse'
 import mammoth from 'mammoth'
+import knowledgeRoutes from './backend/routes/knowledge.js'
+import { publicAnalyticsRoutes, adminMetricsRoutes } from './backend/routes/analytics.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const app = express()
@@ -94,6 +96,28 @@ app.get('/api/cadeiras', async (req, res) => {
   res.json(data)
 })
 
+// Resolves a cadeira by name so the frontend chatbot can find the right knowledge base.
+// Used by TutorIA to connect frontend subject IDs to Supabase cadeira UUIDs.
+app.get('/api/cadeiras/lookup', async (req, res) => {
+  const { nome, curso } = req.query
+  if (!nome) return res.status(400).json({ error: 'nome em falta.' })
+  const { data, error } = await supabase
+    .from('cadeiras')
+    .select('id, nome, curso_id, cursos(nome)')
+    .ilike('nome', `%${nome}%`)
+    .limit(5)
+  if (error) return res.status(500).json({ error: error.message })
+  if (!data?.length) return res.status(404).json({ error: 'Cadeira não encontrada.' })
+  // If a course name was provided, prefer an exact match on course
+  const match = curso
+    ? data.find(c => c.cursos?.nome?.toLowerCase().includes(curso.toLowerCase())) ?? data[0]
+    : data[0]
+  res.json(match)
+})
+
+// ── Public analytics event tracking ──────────────────────────────────────────
+app.use('/api', publicAnalyticsRoutes(supabase))
+
 app.post('/api/chat', async (req, res) => {
   const { cadeira_id, history = [], question } = req.body
   if (!cadeira_id) return res.status(400).json({ error: 'cadeira_id em falta.' })
@@ -102,6 +126,9 @@ app.post('/api/chat', async (req, res) => {
   res.setHeader('Content-Type', 'text/event-stream')
   res.setHeader('Cache-Control', 'no-cache')
   res.setHeader('Connection', 'keep-alive')
+
+  // Track chat event asynchronously (don't block the stream)
+  supabase.from('eventos').insert({ tipo: 'chat_message_sent', cadeira_id, timestamp: new Date().toISOString() }).then(() => {})
 
   try {
     const model  = await getModel(cadeira_id)
@@ -262,6 +289,12 @@ app.delete('/admin/api/cadeiras/:id', requireAdmin, async (req, res) => {
   modelCache.delete(req.params.id)
   res.json({ ok: true })
 })
+
+// ── Knowledge ingestion (admin) ───────────────────────────────────────────────
+app.use('/admin/api/knowledge', requireAdmin, knowledgeRoutes({ supabaseAdmin, genai, modelCache }))
+
+// ── Metrics dashboard (admin) ─────────────────────────────────────────────────
+app.use('/admin/api/metrics', requireAdmin, adminMetricsRoutes(supabaseAdmin))
 
 // ── Fallback SPA ──────────────────────────────────────────────────────────────
 app.get('*', (_req, res) => res.sendFile(join(__dirname, 'aulaiq', 'dist', 'index.html')))
