@@ -165,7 +165,7 @@ export default function InstitutionSelector({ onCreatePlan }: InstitutionSelecto
           {/* Coming soon note */}
           <p className="text-center text-xs text-gray-400 mt-6">
             Mais instituições em breve. Tens interesse noutras faculdades?{' '}
-            <a href="mailto:hello@aulaiq.pt" className="text-blue-500 hover:underline">
+            <a href="mailto:hello@studylab.pt" className="text-blue-500 hover:underline">
               Diz-nos.
             </a>
           </p>

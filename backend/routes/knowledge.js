@@ -3,7 +3,7 @@ import { processarMaterial, buildKnowledgeContext } from '../helpers/ingestion.j
 
 // Factory: returns an Express router for knowledge ingestion.
 // Mount at /admin/api/knowledge (already behind requireAdmin middleware in server.js).
-export default function knowledgeRoutes({ supabaseAdmin, genai, modelCache }) {
+export default function knowledgeRoutes({ supabaseAdmin, genai }) {
   const router = express.Router()
 
   // List materials — optional ?cadeira_id and ?status filters
@@ -49,7 +49,7 @@ export default function knowledgeRoutes({ supabaseAdmin, genai, modelCache }) {
     res.json({ id: material.id, status: 'processing' })
 
     // Fire-and-forget — runs after response is sent
-    _runProcessing({ material, cadeira_id, texto, supabaseAdmin, genai, modelCache }).catch(() => {})
+    _runProcessing({ material, cadeira_id, texto, supabaseAdmin, genai }).catch(() => {})
   })
 
   // Reprocess an existing material using its saved raw_texto
@@ -62,7 +62,7 @@ export default function knowledgeRoutes({ supabaseAdmin, genai, modelCache }) {
     await supabaseAdmin.from('materiais').update({ status: 'processing', erro: null }).eq('id', req.params.id)
     res.json({ id: material.id, status: 'processing' })
 
-    _runProcessing({ material, cadeira_id: material.cadeira_id, texto: material.raw_texto, supabaseAdmin, genai, modelCache }).catch(() => {})
+    _runProcessing({ material, cadeira_id: material.cadeira_id, texto: material.raw_texto, supabaseAdmin, genai }).catch(() => {})
   })
 
   // Delete a material
@@ -77,7 +77,7 @@ export default function knowledgeRoutes({ supabaseAdmin, genai, modelCache }) {
 
 // Runs the Gemini processing pipeline and updates the DB.
 // Also appends the structured knowledge to cadeira.conteudo so the chatbot picks it up.
-async function _runProcessing({ material, cadeira_id, texto, supabaseAdmin, genai, modelCache }) {
+async function _runProcessing({ material, cadeira_id, texto, supabaseAdmin, genai }) {
   try {
     const { data: cadeira } = await supabaseAdmin
       .from('cadeiras')
@@ -107,9 +107,6 @@ async function _runProcessing({ material, cadeira_id, texto, supabaseAdmin, gena
         status: 'completed', processado, updated_at: new Date().toISOString(),
       }).eq('id', material.id),
     ])
-
-    // Bust the in-memory model cache so the next chat uses the new content
-    modelCache.delete(cadeira_id)
 
   } catch (err) {
     await supabaseAdmin.from('materiais').update({

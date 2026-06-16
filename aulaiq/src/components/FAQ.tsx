@@ -63,7 +63,7 @@ export default function FAQ() {
           <p className="text-sm font-semibold text-gray-800">Ainda tens dúvidas?</p>
           <p className="text-sm text-gray-500 mt-1">Fala connosco — respondemos em menos de 24h.</p>
           <a
-            href="mailto:hello@aulaiq.pt"
+            href="mailto:hello@studylab.pt"
             className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-blue-600 hover:text-blue-700 transition-colors"
           >
             Contactar suporte

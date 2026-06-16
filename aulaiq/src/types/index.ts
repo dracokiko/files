@@ -33,6 +33,7 @@ export interface PricingPlan {
   cta: string;
   highlighted?: boolean;
   badge?: string;
+  stripeUrl?: string;
 }
 
 export interface FAQItem {

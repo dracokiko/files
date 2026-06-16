@@ -253,9 +253,9 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
         <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-600 to-violet-600 flex items-center justify-center">
-              <span className="text-white font-black text-xs">A</span>
+              <span className="text-white font-black text-xs">S</span>
             </div>
-            <span className="font-black text-gray-900 text-sm">AulaIQ</span>
+            <span className="font-black text-gray-900 text-sm">StudyLab</span>
           </div>
           <div className="flex items-center gap-3">
             <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${PLAN_COLOR[user.plan]}`}>

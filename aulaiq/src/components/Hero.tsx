@@ -15,10 +15,10 @@ function MockupCard() {
         <div className="bg-gradient-to-r from-blue-600 to-violet-600 px-5 py-4">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
-              <span className="text-white font-black text-sm">A</span>
+              <span className="text-white font-black text-sm">S</span>
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-white font-bold text-sm">AulaIQ</p>
+              <p className="text-white font-bold text-sm">StudyLab</p>
               <p className="text-blue-100 text-xs">Tutor ativo · Microeconomia I</p>
             </div>
             <div className="flex items-center gap-1.5 bg-white/15 rounded-full px-2.5 py-1">
@@ -181,7 +181,7 @@ export default function Hero({ onStart, onPlans }: HeroProps) {
                 ))}
               </div>
               <p className="text-sm text-gray-500">
-                <span className="font-semibold text-gray-900">+200 estudantes</span> já estão a usar o AulaIQ
+                <span className="font-semibold text-gray-900">+200 estudantes</span> já estão a usar o StudyLab
               </p>
             </div>
           </div>

@@ -9,7 +9,7 @@ import type { UserProfile, StudyPreferences, Plan } from '../types';
 //   • Auth.js (NextAuth): next-auth providers
 // The client should only ever hold a short-lived JWT / session cookie, never credentials.
 
-const PROFILE_KEY = 'aulaiq_demo_profile';
+const PROFILE_KEY = 'studylab_demo_profile';
 
 export function saveProfile(profile: UserProfile): void {
   // TODO: Replace with POST /api/auth/register → persist to user database
@@ -91,6 +91,6 @@ export function getStudyPlanSuggestion(preferences: StudyPreferences): {
   };
   return {
     rhythm: frequencyMap[preferences.studyFrequency] ?? 'Plano adaptado ao teu ritmo.',
-    plan: goalMap[preferences.mainGoal] ?? 'Plano personalizado gerado pelo AulaIQ.',
+    plan: goalMap[preferences.mainGoal] ?? 'Plano personalizado gerado pelo StudyLab.',
   };
 }
