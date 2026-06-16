@@ -293,6 +293,12 @@ app.delete('/admin/api/cadeiras/:id', requireAdmin, async (req, res) => {
   res.json({ ok: true })
 })
 
+// ── Redirect admin.keposlearn.com → /admin ────────────────────────────────────
+app.get('/', (req, res, next) => {
+  if (req.hostname === 'admin.keposlearn.com') return res.redirect(302, '/admin')
+  next()
+})
+
 // ── Fallback SPA ──────────────────────────────────────────────────────────────
 app.get('*', (_req, res) => res.sendFile(join(__dirname, 'aulaiq', 'dist', 'index.html')))
 
