@@ -1,30 +1,54 @@
-import { useState, useCallback } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import type { UserProfile } from '../types';
-import { getProfile, saveProfile, clearProfile, demoLogin } from '../utils/auth';
+import { supabase } from '../lib/supabase';
+import { fetchProfile, signIn, signOut } from '../utils/auth';
 
 export function useAuth() {
-  const [user, setUser] = useState<UserProfile | null>(() => getProfile());
+  const [user, setUser] = useState<UserProfile | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const login = useCallback((email: string, _password: string): boolean => {
-    // TODO: Production — POST /api/auth/login, receive JWT, store in httpOnly cookie
-    const profile = demoLogin(email);
-    if (profile) {
-      setUser(profile);
-      return true;
-    }
-    return false;
+  useEffect(() => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (session?.user) {
+        const profile = await fetchProfile(session.user.id);
+        setUser(profile);
+      }
+      setLoading(false);
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (session?.user) {
+        let profile = await fetchProfile(session.user.id);
+        if (!profile) {
+          // Profile insert may still be in flight right after signUp — retry once
+          await new Promise((r) => setTimeout(r, 700));
+          profile = await fetchProfile(session.user.id);
+        }
+        setUser(profile);
+      } else {
+        setUser(null);
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
-  const logout = useCallback(() => {
-    // TODO: Production — invalidate server session / call supabase.auth.signOut()
-    clearProfile();
+  const login = useCallback(async (email: string, password: string): Promise<boolean> => {
+    const { user: profile, error } = await signIn(email, password);
+    if (profile) setUser(profile);
+    return !error;
+  }, []);
+
+  const logout = useCallback(async () => {
+    await signOut();
     setUser(null);
   }, []);
 
   const register = useCallback((profile: UserProfile) => {
-    saveProfile(profile);
     setUser(profile);
   }, []);
 
-  return { user, login, logout, register };
+  return { user, login, logout, register, loading };
 }

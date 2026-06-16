@@ -1,7 +1,8 @@
 import { useState, useCallback } from 'react';
 import { institutions, coursesByInstitution } from '../data/institutions';
 import { validYearsByCourse } from '../data/subjects';
-import { createDemoProfile, getStudyPlanSuggestion } from '../utils/auth';
+import { signUp, getStudyPlanSuggestion } from '../utils/auth';
+import { supabase } from '../lib/supabase';
 import type { UserProfile } from '../types';
 
 interface OnboardingModalProps {
@@ -119,6 +120,8 @@ export default function OnboardingModal({ onClose, onComplete }: OnboardingModal
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [submitting, setSubmitting] = useState(false);
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [profile, setProfile] = useState<UserProfile | null>(null);
 
   const selectedInst = institutions.find((i) => i.id === instId) ?? null;
@@ -130,9 +133,7 @@ export default function OnboardingModal({ onClose, onComplete }: OnboardingModal
     const errs: Record<string, string> = {};
 
     if (step === 0 && !instId) errs.inst = 'Seleciona uma faculdade para continuar.';
-
     if (step === 1 && !courseId) errs.course = 'Seleciona um curso para continuar.';
-
     if (step === 2 && year === null) errs.year = 'Seleciona o teu ano para continuar.';
 
     if (step === 3) {
@@ -153,28 +154,69 @@ export default function OnboardingModal({ onClose, onComplete }: OnboardingModal
     return Object.keys(errs).length === 0;
   }, [step, instId, courseId, year, studyFrequency, studyHours, mainGoal, studyStyle, name, email, password, confirmPassword]);
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (!validate()) return;
     if (step < TOTAL_STEPS - 1) {
       setStep((s) => s + 1);
       return;
     }
-    // Final step — create profile on free plan; success screen offers trial upgrade
-    // TODO: Production — POST /api/auth/register with hashed password (never plain text)
-    const created = createDemoProfile({
+
+    setSubmitting(true);
+    const { user: created, error } = await signUp({
       name: name.trim(),
       email: email.trim().toLowerCase(),
+      password,
       institutionId: instId,
       institutionName: selectedInst?.name ?? instId,
       courseId,
       courseName: selectedCourse?.name ?? courseId,
       year: year!,
       yearLabel,
-      plan: 'free',
       preferences: { studyFrequency, studyHours, mainGoal, studyStyle },
     });
+    setSubmitting(false);
+
+    if (error || !created) {
+      setErrors({ email: error ?? 'Erro ao criar conta. Tenta novamente.' });
+      return;
+    }
+
     setProfile(created);
     setStep(TOTAL_STEPS); // success screen
+  };
+
+  const handleActivatePlan = async (planId: 'trial' | 'monthly' | 'semester') => {
+    setCheckoutLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('create-checkout', {
+        body: {
+          planId,
+          successUrl: `${window.location.origin}/?payment=success`,
+          cancelUrl: `${window.location.origin}/`,
+        },
+      });
+
+      if (!error && data?.url) {
+        window.location.href = data.url;
+        return;
+      }
+    } catch {
+      // fall through to Payment Link fallback
+    }
+
+    // Fallback: Payment Link direto (enquanto Edge Function não está deployada)
+    const links: Record<string, string> = {
+      trial: import.meta.env.VITE_STRIPE_LINK_TRIAL,
+      monthly: import.meta.env.VITE_STRIPE_LINK_MONTHLY,
+      semester: import.meta.env.VITE_STRIPE_LINK_SEMESTER,
+    };
+    const fallback = links[planId];
+    if (fallback && !fallback.includes('SUBSTITUI')) {
+      window.location.href = fallback;
+    } else {
+      alert('Pagamento temporariamente indisponível. Contacta o suporte.');
+    }
+    setCheckoutLoading(false);
   };
 
   const suggestion = profile ? getStudyPlanSuggestion(profile.preferences) : null;
@@ -205,7 +247,7 @@ export default function OnboardingModal({ onClose, onComplete }: OnboardingModal
             <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-violet-500 flex items-center justify-center mx-auto mb-5 shadow-lg shadow-blue-200">
               <span className="text-3xl">🎉</span>
             </div>
-            <h2 className="text-2xl font-black text-gray-900 mb-1">Plano StudyLab criado!</h2>
+            <h2 className="text-2xl font-black text-gray-900 mb-1">Plano AulaIQ criado!</h2>
             <p className="text-gray-500 text-sm mb-8">O teu tutor está pronto, {profile.name.split(' ')[0]}.</p>
 
             <div className="bg-gradient-to-br from-blue-50 to-violet-50 rounded-2xl p-5 mb-6 text-left border border-blue-100">
@@ -241,10 +283,21 @@ export default function OnboardingModal({ onClose, onComplete }: OnboardingModal
             </div>
 
             <button
-              onClick={() => { onComplete({ ...profile, plan: 'trial' }); }}
-              className="w-full py-3.5 text-sm font-bold text-white bg-gradient-to-r from-blue-600 to-violet-600 rounded-2xl hover:shadow-lg hover:shadow-blue-200 hover:scale-[1.01] transition-all duration-200"
+              onClick={() => handleActivatePlan('trial')}
+              disabled={checkoutLoading}
+              className="w-full py-3.5 text-sm font-bold text-white bg-gradient-to-r from-blue-600 to-violet-600 rounded-2xl hover:shadow-lg hover:shadow-blue-200 hover:scale-[1.01] transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed disabled:scale-100 flex items-center justify-center gap-2"
             >
-              Ativar teste de 7 dias — 6€
+              {checkoutLoading ? (
+                <>
+                  <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  A preparar pagamento...
+                </>
+              ) : (
+                'Ativar teste de 7 dias — 6€'
+              )}
             </button>
             <p className="text-xs text-gray-400 mt-3">Sem compromisso. Cancela quando quiseres.</p>
             <button
@@ -450,11 +503,6 @@ export default function OnboardingModal({ onClose, onComplete }: OnboardingModal
                   <p className="text-sm text-gray-500">Guarda o teu plano e acede a qualquer momento.</p>
                 </div>
 
-                {/* TODO: Production — collect email + password and send to POST /api/auth/register
-                    Use Supabase: supabase.auth.signUp({ email, password })
-                    Or Firebase: createUserWithEmailAndPassword(auth, email, password)
-                    NEVER store passwords in localStorage or any client-side storage. */}
-
                 <InputField
                   label="Nome completo"
                   value={name}
@@ -509,9 +557,20 @@ export default function OnboardingModal({ onClose, onComplete }: OnboardingModal
               <button
                 type="button"
                 onClick={handleNext}
-                className="flex-1 py-3 text-sm font-bold text-white bg-gradient-to-r from-blue-600 to-violet-600 rounded-xl hover:shadow-lg hover:shadow-blue-200 hover:scale-[1.01] transition-all duration-200"
+                disabled={submitting}
+                className="flex-1 py-3 text-sm font-bold text-white bg-gradient-to-r from-blue-600 to-violet-600 rounded-xl hover:shadow-lg hover:shadow-blue-200 hover:scale-[1.01] transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed disabled:scale-100 flex items-center justify-center gap-2"
               >
-                {step === TOTAL_STEPS - 1 ? 'Criar conta' : 'Continuar'}
+                {submitting ? (
+                  <>
+                    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                    A criar conta...
+                  </>
+                ) : (
+                  step === TOTAL_STEPS - 1 ? 'Criar conta' : 'Continuar'
+                )}
               </button>
             </div>
           </div>

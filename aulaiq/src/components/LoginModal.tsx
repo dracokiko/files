@@ -2,7 +2,7 @@ import { useState } from 'react';
 
 interface LoginModalProps {
   onClose: () => void;
-  onLogin: (email: string, password: string) => boolean;
+  onLogin: (email: string, password: string) => Promise<boolean>;
   onSignUp: () => void;
 }
 
@@ -12,7 +12,7 @@ export default function LoginModal({ onClose, onLogin, onSignUp }: LoginModalPro
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
@@ -22,18 +22,12 @@ export default function LoginModal({ onClose, onLogin, onSignUp }: LoginModalPro
     }
 
     setLoading(true);
+    const success = await onLogin(email.trim().toLowerCase(), password);
+    setLoading(false);
 
-    // TODO: Production — POST /api/auth/login
-    // Server should validate credentials with bcrypt.compare() and return a JWT.
-    // Store the JWT in an httpOnly cookie (not localStorage).
-    // NEVER compare passwords client-side.
-    setTimeout(() => {
-      const success = onLogin(email.trim().toLowerCase(), password);
-      setLoading(false);
-      if (!success) {
-        setError('Email ou password incorretos. Não tens conta? Junta-te!');
-      }
-    }, 600);
+    if (!success) {
+      setError('Email ou password incorretos. Não tens conta? Junta-te!');
+    }
   };
 
   return (
@@ -57,9 +51,9 @@ export default function LoginModal({ onClose, onLogin, onSignUp }: LoginModalPro
         <div className="bg-gradient-to-br from-blue-600 to-violet-600 px-8 pt-8 pb-6">
           <div className="flex items-center gap-3 mb-2">
             <div className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center">
-              <span className="text-white font-black text-sm">S</span>
+              <span className="text-white font-black text-sm">A</span>
             </div>
-            <span className="text-white font-black text-lg">StudyLab</span>
+            <span className="text-white font-black text-lg">AulaIQ</span>
           </div>
           <h2 className="text-xl font-black text-white">Bem-vindo de volta</h2>
           <p className="text-blue-100 text-sm mt-1">Entra na tua conta para continuar.</p>

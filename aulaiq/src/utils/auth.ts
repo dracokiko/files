@@ -1,83 +1,112 @@
-import type { UserProfile, StudyPreferences, Plan } from '../types';
+import { supabase } from '../lib/supabase';
+import type { UserProfile, StudyPreferences } from '../types';
 
-// TODO: Production security — NEVER store passwords in localStorage (or anywhere client-side).
-// Passwords must be hashed server-side with bcrypt or argon2.
-// Replace this entire module with one of:
-//   • Supabase Auth: supabase.auth.signUp/signIn/signOut
-//   • Firebase Auth: createUserWithEmailAndPassword / signInWithEmailAndPassword
-//   • Clerk: useSignUp / useSignIn hooks
-//   • Auth.js (NextAuth): next-auth providers
-// The client should only ever hold a short-lived JWT / session cookie, never credentials.
-
-const PROFILE_KEY = 'studylab_demo_profile';
-
-export function saveProfile(profile: UserProfile): void {
-  // TODO: Replace with POST /api/auth/register → persist to user database
-  localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
-}
-
-export function getProfile(): UserProfile | null {
-  const stored = localStorage.getItem(PROFILE_KEY);
-  if (!stored) return null;
-  try {
-    return JSON.parse(stored) as UserProfile;
-  } catch {
-    return null;
-  }
-}
-
-export function clearProfile(): void {
-  // TODO: Replace with Supabase/Firebase signOut() — invalidate server-side session
-  localStorage.removeItem(PROFILE_KEY);
-}
-
-export function demoLogin(email: string): UserProfile | null {
-  // TODO: Production — POST /api/auth/login with { email, password }
-  // Server compares bcrypt hash and returns a signed JWT.
-  // NEVER compare passwords client-side.
-  const profile = getProfile();
-  if (profile && profile.email.toLowerCase() === email.toLowerCase()) {
-    return { ...profile, demoSessionActive: true };
-  }
-  return null;
-}
-
-export function createDemoProfile(params: {
+export async function signUp(params: {
   name: string;
   email: string;
+  password: string;
   institutionId: string;
   institutionName: string;
   courseId: string;
   courseName: string;
   year: number;
   yearLabel: string;
-  plan?: Plan;
   preferences: StudyPreferences;
-}): UserProfile {
-  const profile: UserProfile = {
-    name: params.name,
+}): Promise<{ user: UserProfile | null; error: string | null }> {
+  const { data, error } = await supabase.auth.signUp({
     email: params.email,
+    password: params.password,
+    options: { data: { name: params.name } },
+  });
+
+  if (error || !data.user) {
+    return { user: null, error: error?.message ?? 'Erro ao criar conta.' };
+  }
+
+  const { error: profileError } = await supabase.from('profiles').upsert({
+    id: data.user.id,
+    name: params.name,
+    email: params.email.toLowerCase(),
     institution: params.institutionName,
-    institutionId: params.institutionId,
+    institution_id: params.institutionId,
     course: params.courseName,
-    courseId: params.courseId,
+    course_id: params.courseId,
     year: params.year,
-    yearLabel: params.yearLabel,
-    plan: params.plan ?? 'free',
+    year_label: params.yearLabel,
+    plan: 'free',
     preferences: params.preferences,
-    createdAt: new Date().toISOString(),
-    demoSessionActive: true,
+  });
+
+  if (profileError) {
+    return { user: null, error: profileError.message };
+  }
+
+  return {
+    user: {
+      name: params.name,
+      email: params.email.toLowerCase(),
+      institution: params.institutionName,
+      institutionId: params.institutionId,
+      course: params.courseName,
+      courseId: params.courseId,
+      year: params.year,
+      yearLabel: params.yearLabel,
+      plan: 'free',
+      preferences: params.preferences,
+      createdAt: new Date().toISOString(),
+      demoSessionActive: false,
+    },
+    error: null,
   };
-  saveProfile(profile);
-  return profile;
+}
+
+export async function signIn(
+  email: string,
+  password: string,
+): Promise<{ user: UserProfile | null; error: string | null }> {
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+
+  if (error || !data.user) {
+    return { user: null, error: 'Email ou password incorretos.' };
+  }
+
+  const profile = await fetchProfile(data.user.id);
+  return { user: profile, error: profile ? null : 'Perfil não encontrado.' };
+}
+
+export async function signOut(): Promise<void> {
+  await supabase.auth.signOut();
+}
+
+export async function fetchProfile(userId: string): Promise<UserProfile | null> {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', userId)
+    .single();
+
+  if (error || !data) return null;
+
+  return {
+    name: data.name,
+    email: data.email,
+    institution: data.institution,
+    institutionId: data.institution_id,
+    course: data.course,
+    courseId: data.course_id,
+    year: data.year,
+    yearLabel: data.year_label,
+    plan: data.plan,
+    preferences: data.preferences,
+    createdAt: data.created_at,
+    demoSessionActive: false,
+  };
 }
 
 export function getStudyPlanSuggestion(preferences: StudyPreferences): {
   rhythm: string;
   plan: string;
 } {
-  // TODO: Backend integration — POST /api/study-plan/generate
-  // Send { institutionId, courseId, preferences } → AI generates personalized plan
   const frequencyMap: Record<string, string> = {
     '1-2': 'Sessões longas e focadas. Recomendamos 2 blocos de 2h com revisão espaçada.',
     '3-4': 'Ótima frequência! Distribui os temas ao longo da semana com quizzes diários.',
@@ -91,6 +120,6 @@ export function getStudyPlanSuggestion(preferences: StudyPreferences): {
   };
   return {
     rhythm: frequencyMap[preferences.studyFrequency] ?? 'Plano adaptado ao teu ritmo.',
-    plan: goalMap[preferences.mainGoal] ?? 'Plano personalizado gerado pelo StudyLab.',
+    plan: goalMap[preferences.mainGoal] ?? 'Plano personalizado gerado pelo AulaIQ.',
   };
 }
