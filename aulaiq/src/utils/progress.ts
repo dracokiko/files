@@ -10,8 +10,8 @@ import type {
   StreakData,
 } from '../types/progress';
 
-const PROGRESS_KEY = 'aulaiq_progress';
-const DAILY_KEY = 'aulaiq_daily';
+const PROGRESS_KEY = 'studylab_progress';
+const DAILY_KEY = 'studylab_daily';
 
 export function safeParseLocalStorage<T>(key: string, fallback: T): T {
   try {

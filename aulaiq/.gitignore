@@ -2,8 +2,3 @@ node_modules
 dist
 .env
 .DS_Store
-Antes do commit, cria/abre .gitignore e mete:
-node_modules
-dist
-.env
-.DS_Store

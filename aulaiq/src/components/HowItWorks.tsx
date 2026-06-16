@@ -4,7 +4,7 @@ const steps = [
     icon: '🏛️',
     title: 'Escolhes a tua faculdade',
     description:
-      'Começa por selecionar a tua instituição. O AulaIQ já conhece os curricula, professores e estilo de avaliação de cada faculdade.',
+      'Começa por selecionar a tua instituição. O StudyLab já conhece os curricula, professores e estilo de avaliação de cada faculdade.',
   },
   {
     number: '02',

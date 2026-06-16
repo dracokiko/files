@@ -205,7 +205,7 @@ export default function OnboardingModal({ onClose, onComplete }: OnboardingModal
             <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-violet-500 flex items-center justify-center mx-auto mb-5 shadow-lg shadow-blue-200">
               <span className="text-3xl">🎉</span>
             </div>
-            <h2 className="text-2xl font-black text-gray-900 mb-1">Plano AulaIQ criado!</h2>
+            <h2 className="text-2xl font-black text-gray-900 mb-1">Plano StudyLab criado!</h2>
             <p className="text-gray-500 text-sm mb-8">O teu tutor está pronto, {profile.name.split(' ')[0]}.</p>
 
             <div className="bg-gradient-to-br from-blue-50 to-violet-50 rounded-2xl p-5 mb-6 text-left border border-blue-100">

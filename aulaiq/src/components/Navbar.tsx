@@ -46,9 +46,9 @@ export default function Navbar({ user, onJoin, onLogin, onLogout }: NavbarProps)
             className="flex items-center gap-2 group"
           >
             <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-600 to-violet-600 flex items-center justify-center shadow-md group-hover:shadow-blue-300 transition-shadow">
-              <span className="text-white font-black text-sm tracking-tight">A</span>
+              <span className="text-white font-black text-sm tracking-tight">S</span>
             </div>
-            <span className="font-black text-xl text-gray-900 tracking-tight">AulaIQ</span>
+            <span className="font-black text-xl text-gray-900 tracking-tight">StudyLab</span>
           </button>
 
           {/* Desktop nav links */}

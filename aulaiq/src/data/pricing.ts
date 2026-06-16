@@ -14,6 +14,7 @@ export const pricingPlans: PricingPlan[] = [
       'Ideal para experimentar antes de exames',
     ],
     cta: 'Testar por 7 dias',
+    stripeUrl: import.meta.env.VITE_STRIPE_LINK_TRIAL,
   },
   {
     id: 'monthly',
@@ -28,6 +29,7 @@ export const pricingPlans: PricingPlan[] = [
       'Suporte prioritário',
     ],
     cta: 'Começar mensal',
+    stripeUrl: import.meta.env.VITE_STRIPE_LINK_MONTHLY,
   },
   {
     id: 'semester',
@@ -44,5 +46,6 @@ export const pricingPlans: PricingPlan[] = [
     cta: 'Escolher semestre',
     highlighted: true,
     badge: 'Melhor valor',
+    stripeUrl: import.meta.env.VITE_STRIPE_LINK_SEMESTER,
   },
 ];

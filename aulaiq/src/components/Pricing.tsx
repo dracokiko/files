@@ -4,6 +4,14 @@ interface PricingProps {
   onSelectPlan: () => void;
 }
 
+function handlePlanClick(stripeUrl: string | undefined, fallback: () => void) {
+  if (stripeUrl) {
+    window.location.href = stripeUrl;
+  } else {
+    fallback();
+  }
+}
+
 function CheckIcon() {
   return (
     <svg className="w-4 h-4 text-blue-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -60,7 +68,7 @@ export default function Pricing({ onSelectPlan }: PricingProps) {
                       </ul>
                     </div>
                     <button
-                      onClick={onSelectPlan}
+                      onClick={() => handlePlanClick(plan.stripeUrl, onSelectPlan)}
                       className="mt-8 w-full py-3 text-sm font-bold text-white bg-gradient-to-r from-blue-600 to-violet-600 rounded-xl hover:shadow-lg hover:shadow-blue-200 hover:scale-[1.02] transition-all duration-200"
                     >
                       {plan.cta}
@@ -90,7 +98,7 @@ export default function Pricing({ onSelectPlan }: PricingProps) {
                   </ul>
                 </div>
                 <button
-                  onClick={onSelectPlan}
+                  onClick={() => handlePlanClick(plan.stripeUrl, onSelectPlan)}
                   className="mt-8 w-full py-3 text-sm font-semibold text-gray-700 border border-gray-200 rounded-xl hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50 transition-all duration-200"
                 >
                   {plan.cta}
