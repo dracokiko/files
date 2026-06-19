@@ -8,6 +8,10 @@ import pdfParse from 'pdf-parse'
 import mammoth from 'mammoth'
 import knowledgeRoutes from './backend/routes/knowledge.js'
 import { publicAnalyticsRoutes, adminMetricsRoutes } from './backend/routes/analytics.js'
+import ingestionV2Routes from './backend/routes/ingestion_v2.js'
+import retrievalRoutes from './backend/routes/retrieval.js'
+import answeringRoutes from './backend/routes/answering.js'
+import feedbackRoutes from './backend/routes/feedback.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const app = express()
@@ -332,6 +336,14 @@ app.delete('/admin/api/cadeiras/:id', requireAdmin, async (req, res) => {
 
 // ── Knowledge ingestion (admin) ───────────────────────────────────────────────
 app.use('/admin/api/knowledge', requireAdmin, knowledgeRoutes({ supabaseAdmin, genai }))
+
+// ── Knowledge Graph v2: ingestion (admin) + retrieval + answering ─────────────
+app.use('/admin/api/v2', requireAdmin, ingestionV2Routes({ supabaseAdmin, genai }))
+app.use('/api/v2', retrievalRoutes({ supabase, supabaseAdmin }))
+app.use('/api/v2', answeringRoutes({ supabase, supabaseAdmin, genai }))
+app.use('/api/v2', feedbackRoutes({ supabase, supabaseAdmin }))
+// Admin-only answer logs
+app.use('/admin/api/v2', requireAdmin, answeringRoutes({ supabase, supabaseAdmin, genai }))
 
 // ── Metrics dashboard (admin) ─────────────────────────────────────────────────
 app.use('/admin/api/metrics', requireAdmin, adminMetricsRoutes(supabaseAdmin))

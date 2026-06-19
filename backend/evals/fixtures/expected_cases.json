@@ -1,0 +1,37 @@
+[
+  {
+    "query": "o que é um espaço vectorial",
+    "course_id": null,
+    "relevant_chunk_ids": [],
+    "tags": ["definition", "algebra-linear"],
+    "note": "Replace course_id and relevant_chunk_ids after ingesting real documents"
+  },
+  {
+    "query": "fórmula da derivada da função composta",
+    "course_id": null,
+    "relevant_chunk_ids": [],
+    "tags": ["formula", "calculo"],
+    "note": "Should retrieve chunks containing chain rule / regra da cadeia"
+  },
+  {
+    "query": "diferença entre transformação linear e função linear",
+    "course_id": null,
+    "relevant_chunk_ids": [],
+    "tags": ["comparison", "algebra-linear"],
+    "note": "Comparison intent — should prefer definition/theorem chunks"
+  },
+  {
+    "query": "resolva o sistema de equações 2x + 3y = 7, x - y = 1",
+    "course_id": null,
+    "relevant_chunk_ids": [],
+    "tags": ["exercise", "sistemas"],
+    "note": "Exercise intent — should prefer exercise/example chunks"
+  },
+  {
+    "query": "resumo do capítulo 1",
+    "course_id": null,
+    "relevant_chunk_ids": [],
+    "tags": ["summary", "chapter-1"],
+    "note": "Summary + chapter ref intent"
+  }
+]
