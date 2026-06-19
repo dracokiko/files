@@ -12,6 +12,16 @@ import { publicAnalyticsRoutes, adminMetricsRoutes } from './backend/routes/anal
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const app = express()
 app.use(express.json({ limit: '50mb' }))
+
+// Subdomain routing: admin.keposlearn.com → /admin
+app.use((req, _res, next) => {
+  const host = req.headers.host || ''
+  if (host.startsWith('admin.') && !req.path.startsWith('/admin')) {
+    req.url = '/admin' + (req.url === '/' ? '' : req.url)
+  }
+  next()
+})
+
 app.use(express.static(join(__dirname, 'aulaiq', 'dist')))
 
 // ── Variáveis de ambiente ─────────────────────────────────────────────────────
