@@ -185,7 +185,7 @@ export default function OnboardingModal({ onClose, onComplete }: OnboardingModal
     setStep(TOTAL_STEPS); // success screen
   };
 
-  const handleActivatePlan = async (planId: 'trial' | 'monthly' | 'semester') => {
+  const handleActivatePlan = async (planId: 'essential' | 'team') => {
     setCheckoutLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('create-checkout', {
