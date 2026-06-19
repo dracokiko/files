@@ -48,7 +48,7 @@ export interface StudyPreferences {
   studyStyle: string;
 }
 
-export type Plan = 'free' | 'trial' | 'monthly' | 'semester';
+export type Plan = 'free' | 'essential' | 'team';
 
 export interface UserProfile {
   name: string;

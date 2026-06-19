@@ -282,23 +282,32 @@ export default function OnboardingModal({ onClose, onComplete }: OnboardingModal
               </div>
             </div>
 
-            <button
-              onClick={() => handleActivatePlan('trial')}
-              disabled={checkoutLoading}
-              className="w-full py-3.5 text-sm font-bold text-white bg-gradient-to-r from-blue-600 to-violet-600 rounded-2xl hover:shadow-lg hover:shadow-blue-200 hover:scale-[1.01] transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed disabled:scale-100 flex items-center justify-center gap-2"
-            >
-              {checkoutLoading ? (
-                <>
-                  <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                  </svg>
-                  A preparar pagamento...
-                </>
-              ) : (
-                'Ativar teste de 7 dias — 6€'
-              )}
-            </button>
+            <div className="space-y-3">
+              <button
+                onClick={() => handleActivatePlan('essential')}
+                disabled={checkoutLoading}
+                className="w-full py-3.5 text-sm font-bold text-white bg-gradient-to-r from-blue-600 to-violet-600 rounded-2xl hover:shadow-lg hover:shadow-blue-200 hover:scale-[1.01] transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed disabled:scale-100 flex items-center justify-center gap-2"
+              >
+                {checkoutLoading ? (
+                  <>
+                    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                    A preparar pagamento...
+                  </>
+                ) : (
+                  'Ativar Versão Essencial — 5,99€/mês'
+                )}
+              </button>
+              <button
+                onClick={() => handleActivatePlan('team')}
+                disabled={checkoutLoading}
+                className="w-full py-3.5 text-sm font-semibold text-gray-700 border-2 border-gray-200 rounded-2xl hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50 transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                Ativar Versão Team — 16,99€/mês
+              </button>
+            </div>
             <p className="text-xs text-gray-400 mt-3">Sem compromisso. Cancela quando quiseres.</p>
             <button
               onClick={() => { onComplete(profile); }}

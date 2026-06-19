@@ -16,9 +16,8 @@ const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY')!, {
 });
 
 const PRICE_IDS: Record<string, string> = {
-  trial: Deno.env.get('STRIPE_PRICE_TRIAL') ?? '',
-  monthly: Deno.env.get('STRIPE_PRICE_MONTHLY') ?? '',
-  semester: Deno.env.get('STRIPE_PRICE_SEMESTER') ?? '',
+  essential: Deno.env.get('STRIPE_PRICE_ESSENTIAL') ?? '',
+  team:      Deno.env.get('STRIPE_PRICE_TEAM') ?? '',
 };
 
 const CORS = {
@@ -93,7 +92,7 @@ Deno.serve(async (req) => {
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       line_items: [{ price: priceId, quantity: 1 }],
-      mode: planId === 'monthly' ? 'subscription' : 'payment',
+      mode: 'subscription',
       success_url: successUrl,
       cancel_url: cancelUrl,
       metadata: { user_id: user.id, plan: planId },

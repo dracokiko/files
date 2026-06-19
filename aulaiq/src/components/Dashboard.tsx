@@ -22,21 +22,19 @@ interface DashboardProps {
 }
 
 function isPaidPlan(plan: Plan): boolean {
-  return plan === 'trial' || plan === 'monthly' || plan === 'semester';
+  return plan === 'essential' || plan === 'team';
 }
 
 const PLAN_LABEL: Record<Plan, string> = {
-  free: 'Plano Grátis',
-  trial: 'Teste 7 dias',
-  monthly: 'Plano Mensal',
-  semester: 'Plano Semestre',
+  free:      'Plano Grátis',
+  essential: 'Versão Essencial',
+  team:      'Versão Team',
 };
 
 const PLAN_COLOR: Record<Plan, string> = {
-  free: 'bg-gray-100 text-gray-600',
-  trial: 'bg-blue-100 text-blue-700',
-  monthly: 'bg-violet-100 text-violet-700',
-  semester: 'bg-emerald-100 text-emerald-700',
+  free:      'bg-gray-100 text-gray-600',
+  essential: 'bg-blue-100 text-blue-700',
+  team:      'bg-violet-100 text-violet-700',
 };
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
