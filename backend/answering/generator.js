@@ -15,7 +15,7 @@ import { buildPrompt }             from './prompt_builder.js'
 import { checkAnswer, sanitizeAnswer } from './guardrails.js'
 import { buildStructuredCitation, formatBibliography } from './citations.js'
 
-const ANSWER_MODEL = process.env.ANSWER_MODEL ?? 'gemini-1.5-flash'
+const ANSWER_MODEL = process.env.ANSWER_MODEL ?? 'gemini-flash-lite-latest'
 
 /**
  * @param {object} opts
@@ -146,7 +146,7 @@ export async function logAnswer(result, opts, supabaseAdmin) {
     const { data: log } = await supabaseAdmin.from('answer_logs').insert({
       query:              opts.query,
       answer_text:        result.answer_text,
-      answer_model:       process.env.ANSWER_MODEL ?? 'gemini-1.5-flash',
+      answer_model:       ANSWER_MODEL,
       cited_chunk_ids:    result.citations.map(c => c.chunk_id),
       guardrail_flags:    result.guardrail_flags,
       latency_ms:         result.latency_ms,

@@ -19,7 +19,7 @@ from dotenv import load_dotenv
 
 from config_prompts import build_system_instruction
 
-MODEL_NAME = "gemini-1.5-flash"
+MODEL_NAME = "gemini-flash-lite-latest"
 MATERIAL_PATH = "resumos.txt"
 
 

@@ -162,7 +162,7 @@ Rules:
 export async function extractConceptsPassB(chunk, genai, options = {}) {
   const { course_title = '', lang_code = 'pt-PT' } = options
   const model = genai.getGenerativeModel({
-    model: 'gemini-1.5-flash',
+    model: 'gemini-flash-lite-latest',
     generationConfig: { responseMimeType: 'application/json', temperature: 0.1 },
   })
 

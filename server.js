@@ -76,7 +76,7 @@ function toGeminiHistory(messages) {
 }
 
 const tutorModel = genai.getGenerativeModel({
-  model: 'gemini-1.5-flash',
+  model: 'gemini-flash-lite-latest',
   systemInstruction: buildSystemInstruction(),
 })
 
@@ -163,7 +163,7 @@ app.post('/api/chat', async (req, res) => {
     } else {
       // Fallback para cadeiras antigas com conteudo em texto
       model = genai.getGenerativeModel({
-        model: 'gemini-1.5-flash',
+        model: 'gemini-flash-lite-latest',
         systemInstruction: buildSystemInstruction(cadeira.conteudo || '(sem material disponível)'),
       })
       questionParts = question

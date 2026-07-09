@@ -45,7 +45,7 @@ ${texto.slice(0, 80000)}`
 // Saves to disk locally (skipped on Vercel since FS is ephemeral).
 export async function processarMaterial({ texto, contexto, materialId, genai }) {
   const model = genai.getGenerativeModel({
-    model: 'gemini-1.5-flash',
+    model: 'gemini-flash-lite-latest',
     generationConfig: { responseMimeType: 'application/json', temperature: 0.2 },
   })
 
