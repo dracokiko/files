@@ -113,6 +113,18 @@ export default function ingestionV2Routes({ supabaseAdmin, genai }) {
     res.json(data ?? [])
   })
 
+  // ── DELETE /documents/:id — remove a document and all graph data ───────
+  // Related versions, chunks, formulas and jobs are removed by the schema's
+  // cascading foreign keys.
+  router.delete('/documents/:id', async (req, res) => {
+    const { error } = await supabaseAdmin
+      .from('documents')
+      .delete()
+      .eq('id', req.params.id)
+    if (error) return res.status(500).json({ error: error.message })
+    res.json({ ok: true })
+  })
+
   // ── GET /documents/:id/versions — list versions ──────────────────────────
   router.get('/documents/:id/versions', async (req, res) => {
     const { data, error } = await supabaseAdmin
@@ -142,7 +154,7 @@ export default function ingestionV2Routes({ supabaseAdmin, genai }) {
   router.get('/courses', async (_req, res) => {
     const { data, error } = await supabaseAdmin
       .from('courses')
-      .select('id, code, title, lang_code, created_at')
+      .select('id, code, title, lang_code, cadeira_id, created_at')
       .order('title')
     if (error) return res.status(500).json({ error: error.message })
     res.json(data ?? [])

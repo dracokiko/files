@@ -100,7 +100,11 @@
       font-size: 0.75rem; font-weight: 600;
     }
     .badge-completed  { background: #dcfce7; color: #166534; }
+    .badge-processed  { background: #dcfce7; color: #166534; }
+    .badge-succeeded  { background: #dcfce7; color: #166534; }
     .badge-processing { background: #dbeafe; color: #1d4ed8; }
+    .badge-running    { background: #dbeafe; color: #1d4ed8; }
+    .badge-needs_review { background: #fef3c7; color: #92400e; }
     .badge-pending    { background: #f1f5f9; color: #475569; }
     .badge-failed     { background: #fef2f2; color: #dc2626; }
 
@@ -311,43 +315,24 @@
             </select>
           </div>
 
-          <div class="form-row">
-            <div class="form-group">
-              <label>Módulo / Capítulo</label>
-              <input type="text" id="k-modulo" placeholder="ex: Capítulo 1 — Oferta e Procura">
-            </div>
-            <div class="form-group">
-              <label>Ano Letivo</label>
-              <input type="text" id="k-ano-letivo" placeholder="ex: 2024/2025">
-            </div>
-            <div class="form-group">
-              <label>Plano</label>
-              <select id="k-plano">
-                <option value="free">Free</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-              </select>
-            </div>
-          </div>
-
           <div class="form-group">
             <label>Nome do material</label>
             <input type="text" id="k-nome" placeholder="ex: Slides Microeconomia — Capítulo 1">
           </div>
 
           <div class="form-group">
-            <label>Ficheiros (PDF, Word, TXT)</label>
+            <label>Ficheiros (PDF, Word, TXT, Markdown ou LaTeX)</label>
             <div class="resumo-drop-area" id="k-drop-area" onclick="document.getElementById('k-files').click()">
               📄 Clica ou arrasta ficheiros aqui
-              <br><span style="font-size:0.75rem;color:#94a3b8">PDF · Word (.docx) · TXT — extrai o texto automaticamente</span>
-              <input type="file" id="k-files" multiple accept=".pdf,.docx,.doc,.txt,text/plain,application/pdf" style="display:none" onchange="handleKFiles(this)">
+              <br><span style="font-size:0.75rem;color:#94a3b8">Os ficheiros originais são processados pela pipeline v2</span>
+              <input type="file" id="k-files" multiple accept=".pdf,.docx,.txt,.md,.markdown,.tex,.html,text/plain,text/markdown,application/pdf" style="display:none" onchange="handleKFiles(this)">
             </div>
             <div id="k-files-list" class="files-list"></div>
           </div>
 
           <div class="form-group">
-            <label>Texto</label>
-            <textarea id="k-texto" style="min-height:220px" placeholder="O texto extraído dos ficheiros aparece aqui. Podes também colar ou escrever diretamente."></textarea>
+            <label>Texto adicional (opcional)</label>
+            <textarea id="k-texto" style="min-height:160px" placeholder="Podes também colar texto diretamente; será processado como um documento TXT."></textarea>
           </div>
 
           <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
@@ -370,10 +355,10 @@
           </select>
           <select id="k-filter-status" onchange="loadBiblioteca()" style="max-width:160px">
             <option value="">Todos os estados</option>
-            <option value="completed">Concluído</option>
+            <option value="processed">Processado</option>
             <option value="processing">A processar</option>
             <option value="failed">Erro</option>
-            <option value="pending">Pendente</option>
+            <option value="uploaded">Carregado</option>
           </select>
         </div>
         <div id="k-biblioteca-list"></div>
@@ -438,6 +423,9 @@
   let editingId  = null
   let editingType = null
   let pendingFile = null
+  let kPendingFiles = []
+  let kV2Courses = []
+  let kCadeiras = []
 
   // ── Auth ─────────────────────────────────────────────────────────────────────
   function showAdmin() {
@@ -842,7 +830,13 @@
     if (!sel) return
     // Load all cadeiras
     let all = []
-    try { all = await api('GET', '/admin/api/cadeiras') } catch {}
+    try {
+      [all, kV2Courses] = await Promise.all([
+        api('GET', '/admin/api/cadeiras'),
+        api('GET', '/admin/api/v2/courses'),
+      ])
+    } catch {}
+    kCadeiras = all
     sel.innerHTML = '<option value="">— seleciona uma cadeira —</option>'
     all.forEach(c => sel.add(new Option(c.nome, c.id)))
 
@@ -854,59 +848,56 @@
     }
   }
 
-  // Handle file uploads in the Knowledge tab (reuses the existing extract-text endpoint)
+  // Keep original files: the v2 parsers need their raw bytes and metadata.
   function handleKFiles(input) {
-    processKFiles(Array.from(input.files)); input.value = ''
+    addKFiles(Array.from(input.files)); input.value = ''
   }
 
-  async function processKFiles(files) {
-    const listEl  = document.getElementById('k-files-list')
-    const textoEl = document.getElementById('k-texto')
+  function addKFiles(files) {
     for (const file of files) {
       if (file.size > 30 * 1024 * 1024) { toast(`"${file.name}" excede 30 MB — ignorado.`, 'error'); continue }
-      const itemEl = document.createElement('div')
-      itemEl.className = 'file-item loading'
-      itemEl.innerHTML = `<span>⏳</span><span class="fname">${esc(file.name)}</span><span style="color:#94a3b8">${(file.size/1024/1024).toFixed(1)} MB</span>`
-      listEl.appendChild(itemEl)
-      try {
-        const base64 = await fileToBase64(file)
-        const result = await api('POST', '/admin/api/extract-text', { base64, mimeType: file.type || '', filename: file.name })
-        const existing = textoEl.value.trim()
-        textoEl.value = existing ? existing + '\n\n' + result.text : result.text
-        itemEl.className = 'file-item success'
-        itemEl.querySelector('span').textContent = '✅'
-      } catch (err) {
-        itemEl.className = 'file-item error'
-        itemEl.querySelector('span').textContent = '❌'
-        itemEl.querySelector('.fname').textContent += ` — ${err.message}`
-      }
+      const duplicate = kPendingFiles.some(f => f.name === file.name && f.size === file.size)
+      if (!duplicate) kPendingFiles.push(file)
     }
-
-    // Set up drag-drop on the knowledge drop area
-    const area = document.getElementById('k-drop-area')
-    if (area && !area._ddReady) {
-      area._ddReady = true
-      area.addEventListener('dragover',  e => { e.preventDefault(); area.classList.add('drag-over') })
-      area.addEventListener('dragleave', () => area.classList.remove('drag-over'))
-      area.addEventListener('drop', e => {
-        e.preventDefault(); area.classList.remove('drag-over')
-        processKFiles(Array.from(e.dataTransfer.files))
-      })
-    }
+    renderKFiles()
   }
 
-  let kPollInterval = null
+  function renderKFiles() {
+    const listEl = document.getElementById('k-files-list')
+    listEl.innerHTML = kPendingFiles.map((file, index) => `<div class="file-item success">
+      <span>📄</span><span class="fname">${esc(file.name)}</span>
+      <span style="color:#94a3b8">${(file.size/1024/1024).toFixed(1)} MB</span>
+      <button class="btn btn-danger btn-sm" onclick="removeKFile(${index})">Remover</button>
+    </div>`).join('')
+  }
+
+  function removeKFile(index) {
+    kPendingFiles.splice(index, 1)
+    renderKFiles()
+  }
+
+  async function ensureV2Course(cadeiraId) {
+    let course = kV2Courses.find(c => c.cadeira_id === cadeiraId)
+    if (course) return course
+    const cadeira = kCadeiras.find(c => c.id === cadeiraId)
+    if (!cadeira) throw new Error('Cadeira não encontrada.')
+    course = await api('POST', '/admin/api/v2/courses', {
+      code: `cadeira-${cadeiraId}`,
+      title: cadeira.nome,
+      langCode: 'pt-PT',
+      cadeiraId,
+    })
+    kV2Courses.push(course)
+    return course
+  }
 
   async function processarConhecimento() {
     const cadeira_id = document.getElementById('k-cadeira-id').value
     const texto      = document.getElementById('k-texto').value.trim()
     const nome       = document.getElementById('k-nome').value.trim()
-    const modulo     = document.getElementById('k-modulo').value.trim()
-    const ano_letivo = document.getElementById('k-ano-letivo').value.trim()
-    const plano      = document.getElementById('k-plano').value
 
     if (!cadeira_id) { toast('Seleciona uma cadeira.', 'error'); return }
-    if (!texto)      { toast('Adiciona texto para processar.', 'error'); return }
+    if (!kPendingFiles.length && !texto) { toast('Adiciona pelo menos um ficheiro ou texto.', 'error'); return }
 
     const btn    = document.getElementById('k-process-btn')
     const status = document.getElementById('k-status')
@@ -916,99 +907,57 @@
     status.textContent = ''; result.style.display = 'none'
 
     try {
-      const data = await api('POST', '/admin/api/knowledge/process', {
-        cadeira_id, nome: nome || 'Material', modulo, ano_letivo, plano, texto,
-      })
+      const course = await ensureV2Course(cadeira_id)
+      const documents = [...kPendingFiles]
+      if (texto) {
+        const textName = `${nome || 'material'}.txt`
+        documents.push(new File([texto], textName, { type: 'text/plain' }))
+      }
 
-      btn.textContent = '⏳ A processar...'
-      status.textContent = `ID: ${data.id} · A aguardar IA...`
+      const processed = []
+      for (let i = 0; i < documents.length; i++) {
+        const file = documents[i]
+        btn.textContent = `⏳ A processar ${i + 1}/${documents.length}...`
+        status.textContent = file.name
+        const base64 = await fileToBase64(file)
+        const data = await api('POST', '/admin/api/v2/ingest/sync', {
+          base64,
+          filename: file.name,
+          mimeType: file.type || '',
+          courseId: course.id,
+          title: documents.length === 1 && nome ? nome : file.name,
+          langCode: 'pt-PT',
+        })
+        processed.push(data)
+      }
 
-      // Poll until status changes from 'processing'
-      clearInterval(kPollInterval)
-      kPollInterval = setInterval(async () => {
-        try {
-          const mat = await api('GET', `/admin/api/knowledge/${data.id}`)
-          if (mat.status === 'completed') {
-            clearInterval(kPollInterval)
-            btn.disabled = false; btn.textContent = '⚡ Processar com IA'
-            status.textContent = '✅ Processado com sucesso!'
-            renderKResult(mat.processado, result)
-            // Clear inputs for next upload
-            document.getElementById('k-texto').value = ''
-            document.getElementById('k-nome').value  = ''
-            document.getElementById('k-modulo').value = ''
-            document.getElementById('k-files-list').innerHTML = ''
-            toast('Material processado com sucesso!', 'success')
-          } else if (mat.status === 'failed') {
-            clearInterval(kPollInterval)
-            btn.disabled = false; btn.textContent = '⚡ Processar com IA'
-            status.textContent = `❌ Erro: ${mat.erro}`
-            toast('Erro no processamento.', 'error')
-          }
-        } catch {}
-      }, 3000)
+      status.textContent = `✅ ${processed.length} documento(s) processado(s)`
+      renderKResult(processed, result)
+      document.getElementById('k-texto').value = ''
+      document.getElementById('k-nome').value = ''
+      kPendingFiles = []
+      renderKFiles()
+      toast('Material processado pela pipeline v2!', 'success')
 
     } catch (err) {
-      btn.disabled = false; btn.textContent = '⚡ Processar com IA'
+      status.textContent = `❌ ${err.message}`
       toast(err.message, 'error')
+    } finally {
+      btn.disabled = false; btn.textContent = '⚡ Processar com IA'
     }
   }
 
-  function renderKResult(processado, container) {
-    if (!processado) return
+  function renderKResult(results, container) {
+    if (!results?.length) return
     container.style.display = 'block'
-    const qualityClass = { alta: 'quality-alta', media: 'quality-media', baixa: 'quality-baixa' }[processado.metadata?.qualidade] || ''
-
-    let html = `<div class="result-panel">`
-
-    // Metadata header
-    html += `<div class="result-section">
-      <h4>Metadados</h4>
-      <p>Qualidade: <strong class="${qualityClass}">${processado.metadata?.qualidade || '—'}</strong>
-         &nbsp;·&nbsp; Tipo: ${processado.metadata?.tipo_material || '—'}
-         &nbsp;·&nbsp; Completude: ${processado.metadata?.completude || '—'}</p>
-      ${processado.metadata?.avisos?.length ? `<p style="color:#92400e;margin-top:6px">⚠️ ${processado.metadata.avisos.join(' · ')}</p>` : ''}</div>`
-
-    // Summary
-    if (processado.resumo) html += `<div class="result-section"><h4>Resumo</h4><p>${esc(processado.resumo)}</p></div>`
-
-    // Key concepts
-    if (processado.conceitos_chave?.length) {
-      html += `<div class="result-section"><h4>Conceitos Chave (${processado.conceitos_chave.length})</h4>
-        ${processado.conceitos_chave.map(c => `<span class="result-tag">${esc(c)}</span>`).join('')}</div>`
-    }
-
-    // Definitions
-    if (processado.definicoes?.length) {
-      html += `<div class="result-section"><h4>Definições (${processado.definicoes.length})</h4><ul>`
-      processado.definicoes.forEach(d => { html += `<li><strong>${esc(d.termo)}:</strong> ${esc(d.definicao)}</li>` })
-      html += `</ul></div>`
-    }
-
-    // Formulas
-    if (processado.formulas?.length) {
-      html += `<div class="result-section"><h4>Fórmulas (${processado.formulas.length})</h4><ul>`
-      processado.formulas.forEach(f => { html += `<li><strong>${esc(f.nome)}:</strong> <code>${esc(f.formula)}</code> — ${esc(f.explicacao)}</li>` })
-      html += `</ul></div>`
-    }
-
-    // Exam questions
-    if (processado.perguntas_exame?.length) {
-      html += `<div class="result-section"><h4>Perguntas de Exame (${processado.perguntas_exame.length})</h4><ul>`
-      processado.perguntas_exame.forEach(p => {
-        html += `<li><span class="badge badge-${p.dificuldade === 'dificil' ? 'failed' : p.dificuldade === 'medio' ? 'processing' : 'completed'}">${p.dificuldade}</span> ${esc(p.pergunta)}</li>`
-      })
-      html += `</ul></div>`
-    }
-
-    // Q&A count
-    if (processado.qa_estruturado?.length) {
-      html += `<div class="result-section"><h4>Q&A Estruturado (${processado.qa_estruturado.length} pares)</h4>
-        <p style="color:#64748b;font-size:0.8rem">Guardado e disponível para o chatbot.</p></div>`
-    }
-
-    html += `</div>`
-    container.innerHTML = html
+    container.innerHTML = `<div class="result-panel"><div class="result-section">
+      <h4>Pipeline v2 concluída</h4>
+      ${results.map(r => `<p style="margin-top:8px">
+        <span class="badge badge-${r.status === 'succeeded' ? 'succeeded' : 'needs_review'}">${esc(r.status)}</span>
+        ${r.action === 'already_exists' ? 'Documento já existente' :
+          `${r.metrics?.chunks ?? 0} chunks · ${r.metrics?.formulas ?? 0} fórmulas · ${r.metrics?.issues ?? 0} alertas`}
+      </p>`).join('')}
+    </div></div>`
   }
 
   // ── Knowledge Biblioteca ──────────────────────────────────────────────────────
@@ -1019,36 +968,41 @@
 
     listEl.innerHTML = '<p style="color:#64748b;font-size:0.875rem">A carregar...</p>'
 
-    let url = '/admin/api/knowledge'
-    const params = []
-    if (cadeiraId) params.push(`cadeira_id=${cadeiraId}`)
-    if (status)    params.push(`status=${status}`)
-    if (params.length) url += '?' + params.join('&')
-
     try {
-      const data = await api('GET', url)
-      if (!data.length) { listEl.innerHTML = emptyState('Nenhum material ainda.'); return }
+      if (!kV2Courses.length) kV2Courses = await api('GET', '/admin/api/v2/courses')
+      const course = cadeiraId ? kV2Courses.find(c => c.cadeira_id === cadeiraId) : null
+      if (cadeiraId && !course) { listEl.innerHTML = emptyState('Nenhum material ainda.'); return }
+      const url = `/admin/api/v2/documents${course ? `?courseId=${encodeURIComponent(course.id)}` : ''}`
+      const documents = await api('GET', url)
+      const data = await Promise.all(documents.map(async document => {
+        const versions = await api('GET', `/admin/api/v2/documents/${document.id}/versions`)
+        return { ...document, latestVersion: versions[0], versions }
+      }))
+      const filtered = status ? data.filter(d => d.latestVersion?.status === status) : data
+      if (!filtered.length) { listEl.innerHTML = emptyState('Nenhum material ainda.'); return }
 
       listEl.innerHTML = `<table class="data-table">
         <thead><tr>
-          <th>Nome</th><th>Cadeira</th><th>Módulo</th><th>Plano</th><th>Estado</th><th>Data</th><th></th>
+          <th>Nome</th><th>Cadeira</th><th>Tipo</th><th>Versão</th><th>Estado</th><th>Data</th><th></th>
         </tr></thead>
-        <tbody>${data.map(m => `
+        <tbody>${filtered.map(m => {
+          const linkedCourse = kV2Courses.find(c => c.id === m.course_id)
+          const cadeira = kCadeiras.find(c => c.id === linkedCourse?.cadeira_id)
+          return `
           <tr>
-            <td>${esc(m.nome)}</td>
-            <td>${esc(m.cadeiras?.nome || '—')}</td>
-            <td>${esc(m.modulo || '—')}</td>
-            <td><span class="badge badge-pending">${m.plano}</span></td>
-            <td><span class="badge badge-${m.status}">${m.status}</span></td>
+            <td>${esc(m.title || m.original_filename || '—')}</td>
+            <td>${esc(cadeira?.nome || linkedCourse?.title || '—')}</td>
+            <td>${esc(m.source_kind)}</td>
+            <td>${m.latestVersion?.version_no ?? '—'}</td>
+            <td><span class="badge badge-${m.latestVersion?.status || 'pending'}">${esc(m.latestVersion?.status || 'sem versão')}</span></td>
             <td style="color:#64748b;font-size:0.8rem">${new Date(m.created_at).toLocaleDateString('pt-PT')}</td>
             <td>
               <div style="display:flex;gap:6px">
-                ${m.status === 'completed' ? `<button class="btn btn-ghost btn-sm" onclick="viewMaterial('${m.id}')">Ver</button>` : ''}
-                ${m.status === 'failed'    ? `<button class="btn btn-ghost btn-sm" onclick="reprocessMaterial('${m.id}')">Reprocessar</button>` : ''}
-                <button class="btn btn-danger btn-sm" onclick="deleteMaterial('${m.id}','${esc(m.nome)}')">Apagar</button>
+                <button class="btn btn-ghost btn-sm" onclick="viewMaterial('${m.id}')">Ver</button>
+                <button class="btn btn-danger btn-sm" onclick="deleteMaterial('${m.id}')">Apagar</button>
               </div>
             </td>
-          </tr>`).join('')}
+          </tr>`}).join('')}
         </tbody>
       </table>`
     } catch (err) { listEl.innerHTML = `<p style="color:#dc2626">${err.message}</p>` }
@@ -1056,24 +1010,16 @@
 
   async function viewMaterial(id) {
     try {
-      const mat = await api('GET', `/admin/api/knowledge/${id}`)
+      const versions = await api('GET', `/admin/api/v2/documents/${id}/versions`)
       const win = window.open('', '_blank')
-      win.document.write(`<pre style="font-family:monospace;padding:20px;white-space:pre-wrap">${JSON.stringify(mat.processado, null, 2)}</pre>`)
+      win.document.write(`<pre style="font-family:monospace;padding:20px;white-space:pre-wrap">${esc(JSON.stringify(versions, null, 2))}</pre>`)
     } catch (err) { toast(err.message, 'error') }
   }
 
-  async function reprocessMaterial(id) {
+  async function deleteMaterial(id) {
+    if (!confirm('Apagar este documento e todas as suas versões?')) return
     try {
-      await api('POST', `/admin/api/knowledge/${id}/reprocess`)
-      toast('Reprocessamento iniciado.', 'success')
-      loadBiblioteca()
-    } catch (err) { toast(err.message, 'error') }
-  }
-
-  async function deleteMaterial(id, nome) {
-    if (!confirm(`Apagar "${nome}"?`)) return
-    try {
-      await api('DELETE', `/admin/api/knowledge/${id}`)
+      await api('DELETE', `/admin/api/v2/documents/${id}`)
       toast('Apagado.', 'success')
       loadBiblioteca()
     } catch (err) { toast(err.message, 'error') }
@@ -1166,7 +1112,7 @@
     area.addEventListener('dragleave', () => area.classList.remove('drag-over'))
     area.addEventListener('drop', e => {
       e.preventDefault(); area.classList.remove('drag-over')
-      processKFiles(Array.from(e.dataTransfer.files))
+      addKFiles(Array.from(e.dataTransfer.files))
     })
   })
 </script>
