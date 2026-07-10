@@ -21,6 +21,12 @@ export default function Footer() {
             <p className="mt-2 text-xs text-gray-500 max-w-sm">
               A primeira plataforma de estudo com IA pensada especificamente para estudantes universitários portugueses.
             </p>
+            <a
+              href="mailto:keposlearn@gmail.com"
+              className="mt-4 inline-block text-sm text-gray-400 hover:text-white transition-colors"
+            >
+              keposlearn@gmail.com
+            </a>
             {/* Social placeholders */}
             <div className="flex items-center gap-3 mt-5">
               {['Instagram', 'Twitter', 'LinkedIn'].map((social) => (
