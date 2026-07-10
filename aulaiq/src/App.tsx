@@ -12,6 +12,7 @@ import OnboardingModal from './components/OnboardingModal';
 import LoginModal from './components/LoginModal';
 import Dashboard from './components/Dashboard';
 import ProductShowcase from './components/landing/ProductShowcase';
+import PhilosopherBackdrop from './components/PhilosopherBackdrop';
 
 export default function App() {
   const { user, login, logout, register, loading } = useAuth();
@@ -48,6 +49,8 @@ export default function App() {
       ) : (
         /* ── Logged-out: show landing page ──────────────────────────────── */
         <>
+          <PhilosopherBackdrop />
+
           <Navbar
             user={null}
             onJoin={() => setShowOnboarding(true)}
