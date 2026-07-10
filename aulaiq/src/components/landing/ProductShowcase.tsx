@@ -6,13 +6,13 @@ export default function ProductShowcase() {
       <PhilosopherWatermark
         src="/images/philosophers/socrates.png"
         name="ΣΩΚΡΑΤΗΣ"
-        className="left-4 2xl:left-10 top-[-92px]"
+        className="left-4 2xl:left-10 top-[-95px]"
         imgClassName="w-[224px] 2xl:w-[269px]"
       />
       <PhilosopherWatermark
         src="/images/philosophers/athena.png"
         name="ΑΘΗΝΑ"
-        className="right-4 2xl:right-10 top-[-92px]"
+        className="right-4 2xl:right-10 top-[-90px]"
         imgClassName="w-[224px] 2xl:w-[269px]"
       />
 
