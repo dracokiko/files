@@ -27,7 +27,7 @@ function isPaidPlan(plan: Plan): boolean {
 
 const PLAN_LABEL: Record<Plan, string> = {
   free:      'Plano Grátis',
-  essential: 'Versão Essencial',
+  essential: 'Versão Essential',
   team:      'Versão Team',
 };
 

@@ -297,7 +297,7 @@ export default function OnboardingModal({ onClose, onComplete }: OnboardingModal
                     A preparar pagamento...
                   </>
                 ) : (
-                  'Ativar Versão Essencial — 5,99€/mês'
+                  'Ativar Versão Essential — 5,99€/mês'
                 )}
               </button>
               <button

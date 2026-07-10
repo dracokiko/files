@@ -3,7 +3,7 @@ import type { PricingPlan } from '../types';
 export const pricingPlans: PricingPlan[] = [
   {
     id: 'essential',
-    name: 'Versão Essencial',
+    name: 'Versão Essential',
     price: '5,99€',
     period: 'por mês',
     features: [
@@ -13,7 +13,7 @@ export const pricingPlans: PricingPlan[] = [
       'Quizzes automáticos e XP',
       'Plano de estudo personalizado',
     ],
-    cta: 'Começar Essencial',
+    cta: 'Começar Essential',
   },
   {
     id: 'team',
@@ -24,7 +24,7 @@ export const pricingPlans: PricingPlan[] = [
       'Admin + 3 membros (4 no total)',
       '200 mensagens por dia por membro',
       'Quotas independentes por pessoa',
-      'Todos os recursos do Essencial',
+      'Todos os recursos do Essential',
       'Painel de gestão de equipa',
     ],
     cta: 'Começar Team',
