@@ -1,5 +1,5 @@
-import { useState, useMemo } from 'react';
-import { institutions, coursesByInstitution } from '../data/institutions';
+import { useState, useMemo, useEffect } from 'react';
+import { fetchFaculdades, fetchCursos } from '../api/catalog';
 import type { Institution, Course } from '../types';
 
 interface InstitutionSelectorProps {
@@ -8,8 +8,19 @@ interface InstitutionSelectorProps {
 
 export default function InstitutionSelector({ onCreatePlan }: InstitutionSelectorProps) {
   const [query, setQuery] = useState('');
+  const [institutions, setInstitutions] = useState<Institution[]>([]);
   const [selectedInstitution, setSelectedInstitution] = useState<Institution | null>(null);
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
+  const [courses, setCourses] = useState<Course[]>([]);
+
+  useEffect(() => {
+    fetchFaculdades().then(setInstitutions).catch(() => setInstitutions([]));
+  }, []);
+
+  useEffect(() => {
+    if (!selectedInstitution) { setCourses([]); return; }
+    fetchCursos(selectedInstitution.id).then(setCourses).catch(() => setCourses([]));
+  }, [selectedInstitution]);
 
   const filtered = useMemo(
     () =>
@@ -17,10 +28,8 @@ export default function InstitutionSelector({ onCreatePlan }: InstitutionSelecto
         inst.name.toLowerCase().includes(query.toLowerCase()) ||
         inst.description.toLowerCase().includes(query.toLowerCase())
       ),
-    [query]
+    [query, institutions]
   );
-
-  const courses = selectedInstitution ? (coursesByInstitution[selectedInstitution.id] ?? []) : [];
 
   const handleSelectInstitution = (inst: Institution) => {
     setSelectedInstitution(inst);
@@ -85,11 +94,13 @@ export default function InstitutionSelector({ onCreatePlan }: InstitutionSelecto
                     }`}
                   >
                     <div
-                      className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl flex-shrink-0 transition-colors ${
+                      className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl flex-shrink-0 overflow-hidden transition-colors ${
                         isSelected ? 'bg-gradient-to-br from-blue-500 to-violet-500' : 'bg-gray-100'
                       }`}
                     >
-                      {isSelected ? (
+                      {inst.imagemUrl ? (
+                        <img src={inst.imagemUrl} alt="" className="w-full h-full object-cover" />
+                      ) : isSelected ? (
                         <span className="text-white text-lg font-bold">{inst.logo}</span>
                       ) : (
                         inst.logo

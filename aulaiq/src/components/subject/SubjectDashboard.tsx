@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { Subject } from '../../types';
-import type { UserProgress, DailyStats } from '../../types/progress';
+import type { DailyStats, SubjectProgress, StreakData, BadgeId } from '../../types/progress';
 import type { Chapter } from '../../data/chapters';
-import { getChaptersForSubject, getDemoQuizQuestions } from '../../data/chapters';
-import { calculateLevel, calculateMastery, updateXPAfterQuizAttempt, saveProgress } from '../../utils/progress';
+import { fetchChaptersForSubject } from '../../data/chapters';
+import { calculateLevel, calculateMastery } from '../../utils/progress';
+import { fetchSubjectProgress } from '../../api/gamification';
 import type { UserProfile } from '../../types';
 import LevelBadge from '../progress/LevelBadge';
 import XPBar from '../progress/XPBar';
@@ -21,36 +22,57 @@ type Tab = 'tutor' | 'chapters' | 'quizzes' | 'progress' | 'buddies';
 interface SubjectDashboardProps {
   subject: Subject;
   user: UserProfile;
-  progress: UserProgress;
   dailyStats: DailyStats;
   onBack: () => void;
-  onProgressUpdate: (updated: UserProgress) => void;
   onDailyStatsUpdate: (updated: DailyStats) => void;
 }
+
+const EMPTY_SUBJECT_PROGRESS: SubjectProgress = { xp: 0, correctAnswers: 0, totalAnswers: 0, chapters: {} };
 
 export default function SubjectDashboard({
   subject,
   user,
-  progress,
   dailyStats,
   onBack,
-  onProgressUpdate,
   onDailyStatsUpdate,
 }: SubjectDashboardProps) {
   const [activeTab, setActiveTab] = useState<Tab>('tutor');
   const [activeQuizChapter, setActiveQuizChapter] = useState<Chapter | null>(null);
   const [showUpsell, setShowUpsell] = useState(false);
 
+  const [chapters, setChapters] = useState<Chapter[]>([]);
+  const [hasMaterial, setHasMaterial] = useState(false);
+  const [subjectProgress, setSubjectProgress] = useState<SubjectProgress>(EMPTY_SUBJECT_PROGRESS);
+  const [streak, setStreak] = useState<StreakData>({ current: 0, lastActiveDate: '' });
+  const [earnedBadges, setEarnedBadges] = useState<BadgeId[]>([]);
+  const [globalXP, setGlobalXP] = useState(0);
+
   const isPaid = user.plan !== 'free';
-  const subjectProgress = progress.subjectProgress[subject.id];
-  const subjectXP = subjectProgress?.xp ?? 0;
+  const subjectXP = subjectProgress.xp;
   const subjectLevel = calculateLevel(subjectXP);
   const mastery = calculateMastery(
-    subjectProgress?.correctAnswers ?? 0,
-    (subjectProgress?.totalAnswers ?? 0) - (subjectProgress?.correctAnswers ?? 0),
+    subjectProgress.correctAnswers,
+    subjectProgress.totalAnswers - subjectProgress.correctAnswers,
   );
 
-  const chapters = getChaptersForSubject(subject.id);
+  useEffect(() => {
+    fetchChaptersForSubject(subject.id)
+      .then(({ chapters, hasMaterial }) => { setChapters(chapters); setHasMaterial(hasMaterial); })
+      .catch(() => { setChapters([]); setHasMaterial(false); });
+  }, [subject.id]);
+
+  const reloadProgress = useCallback(() => {
+    fetchSubjectProgress(subject.id)
+      .then((data) => {
+        setSubjectProgress(data.subjectProgress);
+        setStreak(data.streak);
+        setEarnedBadges(data.earnedBadges);
+        setGlobalXP(data.globalXP);
+      })
+      .catch(() => {});
+  }, [subject.id]);
+
+  useEffect(() => { reloadProgress(); }, [reloadProgress]);
 
   const TABS: { id: Tab; label: string }[] = [
     { id: 'tutor', label: 'Tutor IA' },
@@ -75,23 +97,13 @@ export default function SubjectDashboard({
     setActiveTab('quizzes');
   }
 
-  function handleQuizComplete(correctAnswers: number, firstTryCorrect: boolean[]) {
-    if (!activeQuizChapter) return;
-    const { updated } = updateXPAfterQuizAttempt({
-      progress,
-      subjectId: subject.id,
-      chapterId: activeQuizChapter.id,
-      correctAnswers,
-      totalQuestions: 5,
-      firstTryCorrect,
-    });
-    saveProgress(updated);
-    onProgressUpdate(updated);
+  function handleQuizComplete() {
+    // Server already applied the XP/badges — just re-sync local state.
+    reloadProgress();
   }
 
   // ── If in an active quiz ────────────────────────────────────────────────
   if (activeQuizChapter && activeTab === 'quizzes') {
-    const questions = getDemoQuizQuestions(activeQuizChapter.name, subject.name);
     return (
       <div className="max-w-2xl mx-auto px-4 py-6">
         {/* Mini header */}
@@ -112,7 +124,6 @@ export default function SubjectDashboard({
         <QuizView
           subject={subject}
           chapter={activeQuizChapter}
-          questions={questions}
           onComplete={handleQuizComplete}
           onBack={() => setActiveQuizChapter(null)}
           onOpenTutor={() => { setActiveQuizChapter(null); setActiveTab('tutor'); }}
@@ -153,7 +164,7 @@ export default function SubjectDashboard({
           <div className="flex-1">
             <MasteryProgress mastery={mastery} size="sm" />
           </div>
-          <StreakBadge streak={progress.streak.current} compact />
+          <StreakBadge streak={streak.current} compact />
         </div>
 
         {/* Tabs */}
@@ -193,49 +204,66 @@ export default function SubjectDashboard({
         )}
 
         {activeTab === 'chapters' && (
-          <ChaptersTab
-            subject={subject}
-            chapters={chapters}
-            subjectProgress={subjectProgress}
-            isPaid={isPaid}
-            onStartQuiz={handleStartQuiz}
-          />
+          !hasMaterial ? (
+            <p className="text-sm text-gray-400 text-center py-8">
+              Ainda não há capítulos disponíveis para esta cadeira.
+            </p>
+          ) : (
+            <ChaptersTab
+              subject={subject}
+              chapters={chapters}
+              subjectProgress={subjectProgress}
+              isPaid={isPaid}
+              onStartQuiz={handleStartQuiz}
+            />
+          )
         )}
 
         {activeTab === 'quizzes' && isPaid && (
-          <div className="space-y-3">
-            <p className="text-sm font-semibold text-gray-700 mb-4">
-              Seleciona um capítulo para iniciar o quiz:
+          !hasMaterial ? (
+            <p className="text-sm text-gray-400 text-center py-8">
+              Ainda não há material para gerar quizzes nesta cadeira.
             </p>
-            {chapters.map((chapter) => (
-              <button
-                key={chapter.id}
-                type="button"
-                onClick={() => handleStartQuiz(chapter)}
-                className="w-full flex items-center justify-between px-4 py-3.5 rounded-xl border-2 border-gray-100 bg-white hover:border-blue-200 hover:shadow-sm text-left transition-all group"
-              >
-                <span className="text-sm font-medium text-gray-800 group-hover:text-blue-700">
-                  {chapter.name}
-                </span>
-                <span className="text-xs font-bold text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity">
-                  Iniciar →
-                </span>
-              </button>
-            ))}
-          </div>
+          ) : (
+            <div className="space-y-3">
+              <p className="text-sm font-semibold text-gray-700 mb-4">
+                Seleciona um capítulo para iniciar o quiz:
+              </p>
+              {chapters.map((chapter) => (
+                <button
+                  key={chapter.id}
+                  type="button"
+                  onClick={() => handleStartQuiz(chapter)}
+                  className="w-full flex items-center justify-between px-4 py-3.5 rounded-xl border-2 border-gray-100 bg-white hover:border-blue-200 hover:shadow-sm text-left transition-all group"
+                >
+                  <span className="text-sm font-medium text-gray-800 group-hover:text-blue-700">
+                    {chapter.name}
+                  </span>
+                  <span className="text-xs font-bold text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                    Iniciar →
+                  </span>
+                </button>
+              ))}
+            </div>
+          )
         )}
 
         {activeTab === 'progress' && (
-          <ProgressTab subject={subject} chapters={chapters} progress={progress} />
+          <ProgressTab
+            subject={subject}
+            chapters={chapters}
+            globalXP={globalXP}
+            streak={streak}
+            earnedBadges={earnedBadges}
+            subjectProgress={subjectProgress}
+          />
         )}
 
         {activeTab === 'buddies' && (
           <BuddiesTab
             subject={subject}
-            userXP={subjectXP}
-            userName={user.name.split(' ')[0]}
-            progress={progress}
-            onProgressUpdate={onProgressUpdate}
+            currentUser={user}
+            subjectXP={subjectXP}
           />
         )}
       </div>

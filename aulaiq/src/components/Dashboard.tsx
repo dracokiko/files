@@ -1,16 +1,15 @@
-import { useState, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { getSubjectsForUser } from '../data/subjects';
 import {
-  loadProgress,
-  saveProgress,
   loadDailyStats,
   saveDailyStats,
   calculateLevel,
   getLevelName,
   getLisbonToday,
 } from '../utils/progress';
+import { fetchBulkProgress } from '../api/gamification';
 import type { UserProfile, Subject, Plan } from '../types';
-import type { UserProgress, DailyStats } from '../types/progress';
+import type { DailyStats, StreakData } from '../types/progress';
 import SubjectDashboard from './subject/SubjectDashboard';
 import UpsellPopup from './UpsellPopup';
 import XPBar from './progress/XPBar';
@@ -169,19 +168,41 @@ function SemesterSection({
 // ─── Main Dashboard ───────────────────────────────────────────────────────────
 
 export default function Dashboard({ user, onLogout }: DashboardProps) {
-  const [progress, setProgress] = useState<UserProgress>(() => loadProgress());
   const [dailyStats, setDailyStats] = useState<DailyStats>(() => loadDailyStats());
   const [openedSubject, setOpenedSubject] = useState<Subject | null>(null);
   const [showUpsell, setShowUpsell] = useState(false);
+  const [globalXP, setGlobalXP] = useState(0);
+  const [streak, setStreak] = useState<StreakData>({ current: 0, lastActiveDate: '' });
+  const [subjectXPMap, setSubjectXPMap] = useState<Record<string, number>>({});
 
   const paid = isPaidPlan(user.plan);
   const dailySubjectId = getDailySubjectId(dailyStats);
-  const globalLevel = calculateLevel(progress.globalXP);
+  const globalLevel = calculateLevel(globalXP);
 
-  const allSubjects = useMemo(
-    () => getSubjectsForUser(user.institutionId, user.courseId, user.year),
-    [user.institutionId, user.courseId, user.year],
-  );
+  const [allSubjects, setAllSubjects] = useState<Subject[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    getSubjectsForUser(user.institution, user.courseId, user.course, user.year)
+      .then((subjects) => { if (!cancelled) setAllSubjects(subjects); })
+      .catch(() => { if (!cancelled) setAllSubjects([]); });
+    return () => { cancelled = true; };
+  }, [user.institution, user.courseId, user.course, user.year]);
+
+  // Refetch whenever the subject list changes or the student returns from a
+  // subject's detail view (where XP may have changed via a completed quiz).
+  useEffect(() => {
+    if (openedSubject || !allSubjects.length) return;
+    let cancelled = false;
+    fetchBulkProgress(allSubjects.map((s) => s.id))
+      .then((data) => {
+        if (cancelled) return;
+        setGlobalXP(data.globalXP);
+        setStreak(data.streak);
+        setSubjectXPMap(data.subjectXP);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [allSubjects, openedSubject]);
 
   const bySemester = useMemo(() => {
     const map = new Map<number, { label: string; subjects: Subject[] }>();
@@ -194,13 +215,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
       .map(([, v]) => v);
   }, [allSubjects]);
 
-  const subjectProgressMap = useMemo(() => {
-    const result: Record<string, number> = {};
-    for (const s of allSubjects) {
-      result[s.id] = progress.subjectProgress[s.id]?.xp ?? 0;
-    }
-    return result;
-  }, [allSubjects, progress]);
+  const subjectProgressMap = subjectXPMap;
 
   function handleSelectSubject(subject: Subject) {
     if (paid) {
@@ -233,11 +248,6 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
     setOpenedSubject(subject);
   }
 
-  function handleProgressUpdate(updated: UserProgress) {
-    saveProgress(updated);
-    setProgress(updated);
-  }
-
   function handleDailyStatsUpdate(updated: DailyStats) {
     saveDailyStats(updated);
     setDailyStats(updated);
@@ -268,10 +278,8 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
         <SubjectDashboard
           subject={openedSubject}
           user={user}
-          progress={progress}
           dailyStats={dailyStats}
           onBack={() => setOpenedSubject(null)}
-          onProgressUpdate={handleProgressUpdate}
           onDailyStatsUpdate={handleDailyStatsUpdate}
         />
       </div>
@@ -297,7 +305,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
 
             <div className="hidden sm:flex items-center gap-3 flex-1 max-w-xs">
               <div className="flex-1">
-                <XPBar xp={progress.globalXP} showLabel={false} compact />
+                <XPBar xp={globalXP} showLabel={false} compact />
               </div>
               <div className="flex-shrink-0 text-xs font-semibold text-gray-500">
                 Nv.{globalLevel} · {getLevelName(globalLevel)}
@@ -305,7 +313,7 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
             </div>
 
             <div className="flex items-center gap-3">
-              <StreakBadge streak={progress.streak.current} compact />
+              <StreakBadge streak={streak.current} compact />
               <span className={`hidden sm:inline-flex text-xs font-semibold px-2.5 py-1 rounded-full ${PLAN_COLOR[user.plan]}`}>
                 {PLAN_LABEL[user.plan]}
               </span>

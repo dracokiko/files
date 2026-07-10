@@ -36,39 +36,13 @@ export interface BadgeInfo {
   emoji: string;
 }
 
-export interface Buddy {
-  id: string;
-  name: string;
-  totalXP: number;
-  subjectXP: Record<string, number>;
-  strongestSubject: string;
-  weakChapter: string;
-}
-
 export interface StreakData {
   current: number;
   lastActiveDate: string; // YYYY-MM-DD Europe/Lisbon
-}
-
-export interface UserProgress {
-  globalXP: number;
-  subjectProgress: Record<string, SubjectProgress>;
-  earnedBadges: BadgeId[];
-  streak: StreakData;
-  competitiveMode: boolean;
-  buddies: Buddy[];
 }
 
 export interface DailyStats {
   date: string; // YYYY-MM-DD Europe/Lisbon
   messageCount: number;
   selectedSubjectId: string | null;
-}
-
-export interface QuizQuestion {
-  id: string;
-  question: string;
-  options: string[];
-  correctIndex: number;
-  explanation: string;
 }

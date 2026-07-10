@@ -4,14 +4,17 @@ import { createClient } from '@supabase/supabase-js'
 import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
 import 'dotenv/config'
-import pdfParse from 'pdf-parse'
-import mammoth from 'mammoth'
+import { parseDocument, mimeToKind } from './backend/ingestion/parsers/index.js'
 import knowledgeRoutes from './backend/routes/knowledge.js'
 import { publicAnalyticsRoutes, adminMetricsRoutes } from './backend/routes/analytics.js'
 import ingestionV2Routes from './backend/routes/ingestion_v2.js'
 import retrievalRoutes from './backend/routes/retrieval.js'
 import answeringRoutes from './backend/routes/answering.js'
 import feedbackRoutes from './backend/routes/feedback.js'
+import chatV2Routes from './backend/routes/chat_v2.js'
+import gamificationRoutes from './backend/routes/gamification.js'
+import { getCourseIdForCadeira } from './backend/services/course_link.js'
+import { requireUser } from './backend/middleware/auth.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const app = express()
@@ -52,34 +55,6 @@ function requireAdmin(req, res, next) {
   next()
 }
 
-// ── Gemini ────────────────────────────────────────────────────────────────────
-function buildSystemInstruction(textMaterial) {
-  const base = `Tu és um tutor de estudo dedicado e paciente. O teu único objetivo
-é ajudar o aluno a compreender a matéria fornecida nos documentos/resumos.
-
-REGRAS RÍGIDAS:
-1. Responde EXCLUSIVAMENTE com base no material fornecido (documentos, resumos, imagens de apontamentos).
-2. Se a pergunta não puder ser respondida com o material, recusa educadamente.
-3. Não inventes factos, datas, fórmulas ou exemplos que não estejam no material.
-4. Sê claro, didático e encorajador.
-5. Responde sempre em português de Portugal.`
-
-  if (!textMaterial) return base
-  return `${base}\n\n=================== APONTAMENTOS ===================\n${textMaterial}\n====================================================`
-}
-
-function toGeminiHistory(messages) {
-  return messages.map(m => ({
-    role: m.role === 'user' ? 'user' : 'model',
-    parts: [{ text: m.content }],
-  }))
-}
-
-const tutorModel = genai.getGenerativeModel({
-  model: 'gemini-flash-lite-latest',
-  systemInstruction: buildSystemInstruction(),
-})
-
 // ── Rotas do aluno ────────────────────────────────────────────────────────────
 app.get('/api/faculdades', async (_req, res) => {
   const { data, error } = await supabase.from('faculdades').select('id, nome, imagem_url').order('nome')
@@ -96,11 +71,37 @@ app.get('/api/cursos', async (req, res) => {
 })
 
 app.get('/api/cadeiras', async (req, res) => {
-  const { curso_id } = req.query
+  const { curso_id, year } = req.query
   if (!curso_id) return res.status(400).json({ error: 'curso_id em falta.' })
-  const { data, error } = await supabase.from('cadeiras').select('id, nome').eq('curso_id', curso_id).order('nome')
+  let q = supabase.from('cadeiras')
+    .select('id, nome, year, year_label, semester, semester_label, is_optional, optional_group')
+    .eq('curso_id', curso_id).order('semester').order('nome')
+  if (year) q = q.eq('year', year)
+  const { data, error } = await q
   if (error) return res.status(500).json({ error: error.message })
   res.json(data)
+})
+
+// Real chapters for a cadeira, sourced from its linked v2 course's ingested
+// material. Read-only — never creates a course link, so a cadeira with
+// nothing ingested yet gets an honest empty result instead of a fake one.
+app.get('/api/cadeiras/:id/chapters', async (req, res) => {
+  const courseId = await getCourseIdForCadeira(req.params.id, supabaseAdmin)
+  if (!courseId) return res.json({ chapters: [], has_material: false })
+
+  const { data: docs } = await supabaseAdmin.from('documents').select('id').eq('course_id', courseId)
+  if (!docs?.length) return res.json({ chapters: [], has_material: false })
+
+  const { data: versions } = await supabaseAdmin.from('document_versions')
+    .select('id').in('document_id', docs.map(d => d.id)).eq('is_active', true)
+  if (!versions?.length) return res.json({ chapters: [], has_material: false })
+
+  const { data: chapters, error } = await supabaseAdmin.from('chapters')
+    .select('id, chapter_no, title, summary')
+    .in('document_version_id', versions.map(v => v.id))
+    .order('chapter_no')
+  if (error) return res.status(500).json({ error: error.message })
+  res.json({ chapters: chapters ?? [], has_material: (chapters?.length ?? 0) > 0 })
 })
 
 // Resolves a cadeira by name so the frontend chatbot can find the right knowledge base.
@@ -123,65 +124,6 @@ app.get('/api/cadeiras/lookup', async (req, res) => {
 
 // ── Public analytics event tracking ──────────────────────────────────────────
 app.use('/api', publicAnalyticsRoutes(supabase))
-
-app.post('/api/chat', async (req, res) => {
-  const { cadeira_id, history = [], question } = req.body
-  if (!cadeira_id) return res.status(400).json({ error: 'cadeira_id em falta.' })
-  if (!question?.trim()) return res.status(400).json({ error: 'Pergunta vazia.' })
-
-  res.setHeader('Content-Type', 'text/event-stream')
-  res.setHeader('Cache-Control', 'no-cache')
-  res.setHeader('Connection', 'keep-alive')
-
-  // Track chat event asynchronously (don't block the stream)
-  supabase.from('eventos').insert({ tipo: 'chat_message_sent', cadeira_id, timestamp: new Date().toISOString() }).then(() => {})
-
-  try {
-    const { data: cadeira, error: cErr } = await supabase
-      .from('cadeiras')
-      .select('conteudo, ficheiros')
-      .eq('id', cadeira_id)
-      .single()
-    if (cErr || !cadeira) throw new Error('Cadeira não encontrada.')
-
-    // Descarregar ficheiros e converter para inline data
-    const ficheiros = cadeira.ficheiros || []
-    const fileParts = []
-    for (const f of ficheiros) {
-      try {
-        const resp = await fetch(f.url)
-        const buf  = Buffer.from(await resp.arrayBuffer())
-        fileParts.push({ inlineData: { mimeType: f.tipo, data: buf.toString('base64') } })
-      } catch { /* ignorar ficheiro se falhar o download */ }
-    }
-
-    let model, questionParts
-    if (fileParts.length > 0) {
-      // Modo multimodal: Gemini lê os ficheiros diretamente
-      model = tutorModel
-      questionParts = [...fileParts, { text: question }]
-    } else {
-      // Fallback para cadeiras antigas com conteudo em texto
-      model = genai.getGenerativeModel({
-        model: 'gemini-flash-lite-latest',
-        systemInstruction: buildSystemInstruction(cadeira.conteudo || '(sem material disponível)'),
-      })
-      questionParts = question
-    }
-
-    const chat   = model.startChat({ history: toGeminiHistory(history) })
-    const result = await chat.sendMessageStream(questionParts)
-    for await (const chunk of result.stream) {
-      const text = chunk.text()
-      if (text) res.write(`data: ${JSON.stringify({ text })}\n\n`)
-    }
-    res.write('data: [DONE]\n\n')
-    res.end()
-  } catch (err) {
-    res.write(`data: ${JSON.stringify({ error: err.message })}\n\n`)
-    res.end()
-  }
-})
 
 // ── Admin: página ─────────────────────────────────────────────────────────────
 app.get('/admin', (_req, res) => {
@@ -224,6 +166,26 @@ app.post('/admin/api/upload-resumo', requireAdmin, async (req, res) => {
   if (error) return res.status(500).json({ error: error.message })
   const { data: urlData } = supabaseAdmin.storage.from('resumos').getPublicUrl(data.path)
   res.json({ url: urlData.publicUrl, nome: filename, tipo: mimeType, tamanho: buffer.length })
+})
+
+// ── Admin: extrair texto de um ficheiro carregado (PDF/DOCX/TXT) ─────────────
+app.post('/admin/api/extract-text', requireAdmin, async (req, res) => {
+  const { base64, mimeType, filename } = req.body
+  if (!base64) return res.status(400).json({ error: 'Ficheiro em falta.' })
+
+  const sourceKind = mimeToKind(mimeType, filename)
+  if (!sourceKind) return res.status(400).json({ error: `Tipo de ficheiro não suportado: ${filename}` })
+
+  let buffer
+  try { buffer = Buffer.from(base64, 'base64') }
+  catch { return res.status(400).json({ error: 'base64 inválido.' }) }
+
+  try {
+    const result = await parseDocument(buffer, sourceKind)
+    res.json({ text: result.markdown })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
 })
 
 // ── Admin: faculdades CRUD ────────────────────────────────────────────────────
@@ -284,7 +246,9 @@ app.delete('/admin/api/cursos/:id', requireAdmin, async (req, res) => {
 
 // ── Admin: cadeiras CRUD ──────────────────────────────────────────────────────
 app.get('/admin/api/cadeiras', requireAdmin, async (req, res) => {
-  let q = supabaseAdmin.from('cadeiras').select('id, nome, conteudo, ficheiros, curso_id').order('nome')
+  let q = supabaseAdmin.from('cadeiras')
+    .select('id, nome, conteudo, ficheiros, curso_id, year, year_label, semester, semester_label, is_optional, optional_group')
+    .order('nome')
   if (req.query.curso_id) q = q.eq('curso_id', req.query.curso_id)
   const { data, error } = await q
   if (error) return res.status(500).json({ error: error.message })
@@ -292,14 +256,16 @@ app.get('/admin/api/cadeiras', requireAdmin, async (req, res) => {
 })
 
 app.post('/admin/api/cadeiras', requireAdmin, async (req, res) => {
-  const { curso_id, nome, ficheiros = [] } = req.body
-  const { data, error } = await supabaseAdmin.from('cadeiras').insert({ curso_id, nome, ficheiros }).select().single()
+  const { curso_id, nome, ficheiros = [], year, year_label, semester, semester_label, is_optional, optional_group } = req.body
+  const { data, error } = await supabaseAdmin.from('cadeiras')
+    .insert({ curso_id, nome, ficheiros, year, year_label, semester, semester_label, is_optional, optional_group })
+    .select().single()
   if (error) return res.status(500).json({ error: error.message })
   res.json(data)
 })
 
 app.put('/admin/api/cadeiras/:id', requireAdmin, async (req, res) => {
-  const { curso_id, nome, ficheiros } = req.body
+  const { curso_id, nome, ficheiros, year, year_label, semester, semester_label, is_optional, optional_group } = req.body
 
   // Apagar do Storage os ficheiros que foram removidos
   if (ficheiros !== undefined) {
@@ -314,7 +280,16 @@ app.put('/admin/api/cadeiras/:id', requireAdmin, async (req, res) => {
     }
   }
 
-  const update = { curso_id, nome, ...(ficheiros !== undefined && { ficheiros }) }
+  const update = {
+    curso_id, nome,
+    ...(ficheiros !== undefined && { ficheiros }),
+    ...(year !== undefined && { year }),
+    ...(year_label !== undefined && { year_label }),
+    ...(semester !== undefined && { semester }),
+    ...(semester_label !== undefined && { semester_label }),
+    ...(is_optional !== undefined && { is_optional }),
+    ...(optional_group !== undefined && { optional_group }),
+  }
   const { data, error } = await supabaseAdmin.from('cadeiras').update(update).eq('id', req.params.id).select().single()
   if (error) return res.status(500).json({ error: error.message })
   res.json(data)
@@ -342,11 +317,15 @@ app.use('/admin/api/v2', requireAdmin, ingestionV2Routes({ supabaseAdmin, genai 
 app.use('/api/v2', retrievalRoutes({ supabase, supabaseAdmin }))
 app.use('/api/v2', answeringRoutes({ supabase, supabaseAdmin, genai }))
 app.use('/api/v2', feedbackRoutes({ supabase, supabaseAdmin }))
+app.use('/api/v2', chatV2Routes({ supabase, supabaseAdmin, genai }))
 // Admin-only answer logs
 app.use('/admin/api/v2', requireAdmin, answeringRoutes({ supabase, supabaseAdmin, genai }))
 
 // ── Metrics dashboard (admin) ─────────────────────────────────────────────────
 app.use('/admin/api/metrics', requireAdmin, adminMetricsRoutes(supabaseAdmin))
+
+// ── Gamification (buddies/XP/quiz) — server-validated, requires real auth ────
+app.use('/api/gamification', requireUser(supabase), gamificationRoutes({ supabase, supabaseAdmin, genai }))
 
 // ── Fallback SPA ──────────────────────────────────────────────────────────────
 // Only unmatched *page* routes fall back to index.html. Requests for missing

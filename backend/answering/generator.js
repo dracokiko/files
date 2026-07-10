@@ -17,6 +17,59 @@ import { buildStructuredCitation, formatBibliography } from './citations.js'
 
 const ANSWER_MODEL = process.env.ANSWER_MODEL ?? 'gemini-flash-lite-latest'
 
+const ZERO_RESULTS_MESSAGE = 'Não foram encontrados materiais relevantes para responder a esta pergunta. Verifique se os documentos da cadeira foram carregados.'
+
+const GENERATION_CONFIG = {
+  maxOutputTokens: 800,
+  temperature: 0.1,        // low temperature = less hallucination
+  topP: 0.9,
+  stopSequences: ['</contexto>'],
+}
+
+/**
+ * Runs everything before the Gemini call: parse → hybrid retrieval → rerank
+ * → citations → prompt. Shared by the non-streaming `generateAnswer` below
+ * and the streaming chat route, so both use identical retrieval/grounding.
+ *
+ * @param {object} opts
+ * @param {string} opts.query
+ * @param {string} opts.courseId
+ * @param {string=} opts.documentId
+ * @param {object} opts.supabase
+ * @param {number=} opts.topK
+ * @param {number=} opts.candidateK
+ * @param {object[]=} opts.history — recent {role, content} turns for follow-ups
+ */
+export async function prepareAnswerContext(opts) {
+  const { query, courseId, documentId, supabase, topK = 8, candidateK = 30, history = [] } = opts
+
+  const parsed = parseQuery(query)
+
+  const t1 = Date.now()
+  const candidates = await hybridSearch(query, {
+    courseId,
+    documentId,
+    topK: candidateK,
+    supabase,
+    weights: parsed.weights,
+  })
+  const retrieval_latency_ms = Date.now() - t1
+  const zero_results = candidates.length === 0
+
+  const reranked = zero_results ? [] : await rerank(candidates, parsed, { topK, supabase })
+  const citations = reranked.map((r, i) => buildStructuredCitation(r, i + 1))
+  const bibliography = formatBibliography(citations)
+
+  const { systemPrompt, userPrompt } = zero_results
+    ? { systemPrompt: null, userPrompt: null }
+    : buildPrompt(query, reranked, parsed, citations, history)
+
+  return {
+    parsed, reranked, citations, bibliography, systemPrompt, userPrompt,
+    zero_results, retrieval_latency_ms, fallbackText: ZERO_RESULTS_MESSAGE,
+  }
+}
+
 /**
  * @param {object} opts
  * @param {string} opts.query
@@ -42,65 +95,27 @@ const ANSWER_MODEL = process.env.ANSWER_MODEL ?? 'gemini-flash-lite-latest'
  * }>}
  */
 export async function generateAnswer(opts) {
-  const {
-    query,
-    courseId,
-    documentId,
-    supabase,
-    genai,
-    topK = 8,
-    candidateK = 30,
-    includeRaw = false,
-    userId,
-    tenantId,
-  } = opts
+  const { query, genai, includeRaw = false } = opts
 
   if (!query?.trim()) throw new Error('query is required')
   if (!genai)         throw new Error('genai instance is required')
 
   const t0 = Date.now()
 
-  // ── 1. Parse query ───────────────────────────────────────────────────────
-  const parsed = parseQuery(query)
+  const ctx = await prepareAnswerContext(opts)
+  const { parsed, reranked, citations, bibliography, systemPrompt, userPrompt, zero_results, retrieval_latency_ms } = ctx
 
-  // ── 2. Hybrid retrieval ───────────────────────────────────────────────────
-  const t1 = Date.now()
-  const candidates = await hybridSearch(query, {
-    courseId,
-    documentId,
-    topK: candidateK,
-    supabase,
-    weights: parsed.weights,
-  })
-  const retrieval_latency_ms = Date.now() - t1
-  const zero_results = candidates.length === 0
-
-  // ── 3. Rerank ────────────────────────────────────────────────────────────
-  const reranked = await rerank(candidates, parsed, { topK, supabase })
-
-  // ── 4. Build citations ───────────────────────────────────────────────────
-  const citations = reranked.map((r, i) => buildStructuredCitation(r, i + 1))
-
-  // ── 5. Build prompt ──────────────────────────────────────────────────────
-  const { systemPrompt, userPrompt } = buildPrompt(query, reranked, parsed, citations)
-
-  // ── 6. Generate answer ───────────────────────────────────────────────────
   let answerText = ''
   const t2 = Date.now()
 
   if (zero_results) {
-    answerText = 'Não foram encontrados materiais relevantes para responder a esta pergunta. Verifique se os documentos da cadeira foram carregados.'
+    answerText = ctx.fallbackText
   } else {
     try {
       const model = genai.getGenerativeModel({
         model: ANSWER_MODEL,
         systemInstruction: systemPrompt,
-        generationConfig: {
-          maxOutputTokens: 800,
-          temperature: 0.1,        // low temperature = less hallucination
-          topP: 0.9,
-          stopSequences: ['</contexto>'],
-        },
+        generationConfig: GENERATION_CONFIG,
       })
       const result = await model.generateContent(userPrompt)
       answerText = result.response.text() ?? ''
@@ -116,7 +131,6 @@ export async function generateAnswer(opts) {
   const finalAnswer = sanitizeAnswer(answerText, guardrailResult)
 
   // ── 8. Append bibliography ───────────────────────────────────────────────
-  const bibliography = formatBibliography(citations)
   const answerWithBib = citations.length > 0
     ? finalAnswer + bibliography
     : finalAnswer

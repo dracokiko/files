@@ -1,24 +1,25 @@
-import { useState } from 'react';
-import type { Subject } from '../../types';
-import type { UserProgress, Buddy } from '../../types/progress';
-import { saveProgress } from '../../utils/progress';
+import { useState, useEffect, useCallback } from 'react';
+import type { Subject, UserProfile } from '../../types';
+import { loadCompetitiveMode, saveCompetitiveMode } from '../../utils/progress';
+import {
+  fetchBuddies, addBuddy, sendChallenge, markChallengeSeen,
+  type RemoteBuddy, type RemoteChallenge,
+} from '../../api/gamification';
 
 interface BuddiesTabProps {
   subject: Subject;
-  userXP: number;
-  userName: string;
-  progress: UserProgress;
-  onProgressUpdate: (updated: UserProgress) => void;
+  currentUser: UserProfile;
+  subjectXP: number;
 }
 
 function CompetitiveMessage({ rank, nearestBuddy, subjectName, competitive }: {
   rank: number;
-  nearestBuddy: Buddy | null;
+  nearestBuddy: RemoteBuddy | null;
   subjectName: string;
   competitive: boolean;
 }) {
   if (!nearestBuddy) return null;
-  const diff = Math.abs(nearestBuddy.subjectXP[subjectName] ?? nearestBuddy.totalXP / 3);
+  const diff = Math.abs(nearestBuddy.xp);
 
   if (competitive) {
     const msgs = [
@@ -43,48 +44,58 @@ function CompetitiveMessage({ rank, nearestBuddy, subjectName, competitive }: {
   );
 }
 
-export default function BuddiesTab({ subject, userXP, userName, progress, onProgressUpdate }: BuddiesTabProps) {
+export default function BuddiesTab({ subject, currentUser, subjectXP }: BuddiesTabProps) {
   const [showAddForm, setShowAddForm] = useState(false);
-  const [newBuddyName, setNewBuddyName] = useState('');
+  const [newBuddyEmail, setNewBuddyEmail] = useState('');
+  const [addError, setAddError] = useState<string | null>(null);
   const [challengeMsg, setChallengeMsg] = useState<string | null>(null);
+  const [competitive, setCompetitive] = useState(() => loadCompetitiveMode());
+  const [buddies, setBuddies] = useState<RemoteBuddy[]>([]);
+  const [challenges, setChallenges] = useState<RemoteChallenge[]>([]);
 
-  const competitive = progress.competitiveMode;
+  const reload = useCallback(() => {
+    fetchBuddies(subject.id).then((data) => { setBuddies(data.buddies); setChallenges(data.challenges); }).catch(() => {});
+  }, [subject.id]);
 
-  // Build leaderboard for this subject
+  useEffect(() => { reload(); }, [reload]);
+
+  const userFirstName = currentUser.name.split(' ')[0];
   const entries = [
-    { id: 'user', name: userName, xp: userXP, isUser: true },
-    ...progress.buddies.map((b) => ({
-      id: b.id,
-      name: b.name,
-      xp: b.subjectXP[subject.id] ?? Math.round(b.totalXP / 4),
-      isUser: false,
-    })),
+    { id: 'user', name: userFirstName, xp: subjectXP, isUser: true },
+    ...buddies.map((b) => ({ id: b.id, name: b.name, xp: b.xp, isUser: false })),
   ].sort((a, b) => b.xp - a.xp);
 
   const userRank = entries.findIndex((e) => e.isUser);
-  const aboveBuddy = userRank > 0 ? progress.buddies.find((b) => b.name === entries[userRank - 1]?.name) ?? null : null;
+  const aboveBuddy = userRank > 0 ? buddies.find((b) => b.name === entries[userRank - 1]?.name) ?? null : null;
 
-  function handleAddBuddy() {
-    if (!newBuddyName.trim()) return;
-    const newBuddy: Buddy = {
-      id: `buddy-${Date.now()}`,
-      name: newBuddyName.trim(),
-      totalXP: Math.floor(Math.random() * 300) + 100,
-      subjectXP: { [subject.id]: Math.floor(Math.random() * 150) + 50 },
-      strongestSubject: subject.name,
-      weakChapter: 'Conceitos Fundamentais',
-    };
-    const updated: UserProgress = { ...progress, buddies: [...progress.buddies, newBuddy] };
-    saveProgress(updated);
-    onProgressUpdate(updated);
-    setNewBuddyName('');
-    setShowAddForm(false);
+  async function handleAddBuddy() {
+    if (!newBuddyEmail.trim()) return;
+    setAddError(null);
+    try {
+      await addBuddy(newBuddyEmail.trim());
+      setNewBuddyEmail('');
+      setShowAddForm(false);
+      reload();
+    } catch (err) {
+      setAddError(err instanceof Error ? err.message : 'Erro ao adicionar buddy.');
+    }
+  }
+
+  async function handleChallenge(buddyId: string) {
+    try {
+      await sendChallenge(buddyId, subject.id);
+      setChallengeMsg('Desafio enviado! O teu buddy vai vê-lo na próxima vez que abrir a cadeira.');
+      setTimeout(() => setChallengeMsg(null), 4000);
+    } catch {
+      setChallengeMsg('Não foi possível enviar o desafio.');
+      setTimeout(() => setChallengeMsg(null), 4000);
+    }
   }
 
   function handleToggleCompetitive() {
-    const updated: UserProgress = { ...progress, competitiveMode: !progress.competitiveMode };
-    saveProgress(updated);
-    onProgressUpdate(updated);
+    const next = !competitive;
+    setCompetitive(next);
+    saveCompetitiveMode(next);
   }
 
   return (
@@ -103,6 +114,25 @@ export default function BuddiesTab({ subject, userXP, userName, progress, onProg
           <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${competitive ? 'translate-x-5' : ''}`} />
         </button>
       </div>
+
+      {/* Incoming challenges */}
+      {challenges.length > 0 && (
+        <div className="space-y-2">
+          {challenges.map((c) => (
+            <div key={c.id} className="flex items-center justify-between gap-3 bg-violet-50 border border-violet-100 rounded-xl p-3">
+              <p className="text-xs text-violet-700 font-medium">
+                🎯 {c.fromName} desafiou-te em {subject.name}{c.message ? `: "${c.message}"` : '!'}
+              </p>
+              <button
+                onClick={() => { markChallengeSeen(c.id); setChallenges((cs) => cs.filter((x) => x.id !== c.id)); }}
+                className="text-xs font-semibold text-violet-600 hover:text-violet-800 flex-shrink-0"
+              >
+                OK
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Competitive message */}
       <CompetitiveMessage
@@ -142,10 +172,7 @@ export default function BuddiesTab({ subject, userXP, userName, progress, onProg
               </div>
               {!entry.isUser && (
                 <button
-                  onClick={() => {
-                    setChallengeMsg('Desafio criado em demo. Em produção, isto enviará convite ao teu buddy.');
-                    setTimeout(() => setChallengeMsg(null), 4000);
-                  }}
+                  onClick={() => handleChallenge(entry.id)}
                   className="text-xs font-semibold text-violet-600 hover:text-violet-700 px-2 py-1 bg-violet-50 rounded-lg transition-colors flex-shrink-0"
                 >
                   Desafiar
@@ -174,13 +201,14 @@ export default function BuddiesTab({ subject, userXP, userName, progress, onProg
       ) : (
         <div className="space-y-2">
           <input
-            type="text"
-            value={newBuddyName}
-            onChange={(e) => setNewBuddyName(e.target.value)}
+            type="email"
+            value={newBuddyEmail}
+            onChange={(e) => setNewBuddyEmail(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') handleAddBuddy(); }}
-            placeholder="Nome ou email do buddy"
+            placeholder="Email do buddy"
             className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-50 focus:bg-white transition-all"
           />
+          {addError && <p className="text-xs text-red-500">{addError}</p>}
           <div className="flex gap-2">
             <button
               onClick={handleAddBuddy}
@@ -189,7 +217,7 @@ export default function BuddiesTab({ subject, userXP, userName, progress, onProg
               Adicionar
             </button>
             <button
-              onClick={() => { setShowAddForm(false); setNewBuddyName(''); }}
+              onClick={() => { setShowAddForm(false); setNewBuddyEmail(''); setAddError(null); }}
               className="px-4 py-2.5 text-sm font-semibold text-gray-600 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors"
             >
               Cancelar

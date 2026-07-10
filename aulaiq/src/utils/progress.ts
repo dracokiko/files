@@ -1,17 +1,7 @@
-// TODO: In production, XP, quiz attempts and leaderboard must be validated server-side to prevent cheating.
+import type { DailyStats, BadgeInfo } from '../types/progress';
 
-import type {
-  UserProgress,
-  DailyStats,
-  SubjectProgress,
-  ChapterProgress,
-  BadgeId,
-  BadgeInfo,
-  StreakData,
-} from '../types/progress';
-
-const PROGRESS_KEY = 'studylab_progress';
 const DAILY_KEY = 'studylab_daily';
+const COMPETITIVE_KEY = 'studylab_competitive';
 
 export function safeParseLocalStorage<T>(key: string, fallback: T): T {
   try {
@@ -61,50 +51,6 @@ export const ALL_BADGES: BadgeInfo[] = [
   { id: 'recovered_weak_chapter', name: 'Recuperaste um capítulo fraco', description: 'Melhoraste um capítulo com menos de 40% mastery', emoji: '💪' },
 ];
 
-const DEFAULT_STREAK: StreakData = { current: 0, lastActiveDate: '' };
-
-const DEFAULT_PROGRESS: UserProgress = {
-  globalXP: 0,
-  subjectProgress: {},
-  earnedBadges: [],
-  streak: DEFAULT_STREAK,
-  competitiveMode: false,
-  buddies: [
-    {
-      id: 'miguel',
-      name: 'Miguel',
-      totalXP: 590,
-      subjectXP: { 'g-y1-s1-micro': 210, 'g-y1-s1-mat1': 180, 'eco-y1-s1-micro': 200 },
-      strongestSubject: 'Microeconomia',
-      weakChapter: 'Elasticidades',
-    },
-    {
-      id: 'ines',
-      name: 'Inês',
-      totalXP: 720,
-      subjectXP: { 'g-y1-s1-micro': 280, 'g-y1-s1-mat1': 240, 'eco-y1-s1-micro': 270 },
-      strongestSubject: 'Microeconomia',
-      weakChapter: 'Integrais',
-    },
-    {
-      id: 'joao',
-      name: 'João',
-      totalXP: 410,
-      subjectXP: { 'g-y1-s1-micro': 150, 'g-y1-s1-mat1': 120, 'eco-y1-s1-micro': 140 },
-      strongestSubject: 'Matemática I',
-      weakChapter: 'Estruturas de Mercado',
-    },
-  ],
-};
-
-export function loadProgress(): UserProgress {
-  return safeParseLocalStorage<UserProgress>(PROGRESS_KEY, DEFAULT_PROGRESS);
-}
-
-export function saveProgress(progress: UserProgress): void {
-  localStorage.setItem(PROGRESS_KEY, JSON.stringify(progress));
-}
-
 export function loadDailyStats(): DailyStats {
   const today = getLisbonToday();
   const stored = safeParseLocalStorage<DailyStats>(DAILY_KEY, {
@@ -122,139 +68,12 @@ export function saveDailyStats(stats: DailyStats): void {
   localStorage.setItem(DAILY_KEY, JSON.stringify(stats));
 }
 
-export interface XPResult {
-  xpDelta: number;
-  completionXP: number;
-  perfectBonus: number;
-  streakBonus: number;
-  newBadges: BadgeId[];
-  newGlobalXP: number;
-  newSubjectXP: number;
-  newChapterXP: number;
-  isPerfect: boolean;
+// Competitive mode is a cosmetic tone toggle for buddy messaging, not a
+// gamified stat — local-only is fine, nothing to cheat.
+export function loadCompetitiveMode(): boolean {
+  return safeParseLocalStorage<boolean>(COMPETITIVE_KEY, false);
 }
 
-export function updateXPAfterQuizAttempt(params: {
-  progress: UserProgress;
-  subjectId: string;
-  chapterId: string;
-  correctAnswers: number;
-  totalQuestions: number;
-  firstTryCorrect: boolean[];
-}): { updated: UserProgress; result: XPResult } {
-  const { progress, subjectId, chapterId, correctAnswers, totalQuestions, firstTryCorrect } = params;
-  const today = getLisbonToday();
-
-  // Per-answer XP
-  let xpDelta = 0;
-  for (let i = 0; i < totalQuestions; i++) {
-    if (i < correctAnswers) {
-      xpDelta += firstTryCorrect[i] ? 25 : 15;
-    } else {
-      xpDelta = Math.max(0, xpDelta - 5);
-    }
-  }
-
-  // Completion bonus
-  const completionXP = 40;
-  xpDelta += completionXP;
-
-  // Perfect bonus
-  const isPerfect = correctAnswers === totalQuestions;
-  const perfectBonus = isPerfect ? 100 : 0;
-  xpDelta += perfectBonus;
-
-  // Streak
-  let streakBonus = 0;
-  const streak = { ...progress.streak };
-  if (streak.lastActiveDate !== today) {
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Lisbon' }).format(yesterday);
-    streak.current = streak.lastActiveDate === yStr ? streak.current + 1 : 1;
-    streak.lastActiveDate = today;
-    streakBonus = 20;
-    xpDelta += streakBonus;
-  }
-
-  // Update subject/chapter progress
-  const prevSubject: SubjectProgress = progress.subjectProgress[subjectId] ?? {
-    xp: 0,
-    correctAnswers: 0,
-    totalAnswers: 0,
-    chapters: {},
-  };
-  const prevChapter: ChapterProgress = prevSubject.chapters[chapterId] ?? {
-    xp: 0,
-    correctAnswers: 0,
-    wrongAnswers: 0,
-    quizAttempts: [],
-  };
-
-  const chapterXP = Math.max(0, prevChapter.xp + xpDelta);
-  const wrongAnswers = totalQuestions - correctAnswers;
-
-  const newChapter: ChapterProgress = {
-    xp: chapterXP,
-    correctAnswers: prevChapter.correctAnswers + correctAnswers,
-    wrongAnswers: prevChapter.wrongAnswers + wrongAnswers,
-    quizAttempts: [
-      ...prevChapter.quizAttempts,
-      { date: today, score: correctAnswers, totalQuestions, xpGained: xpDelta, isPerfect },
-    ],
-  };
-
-  const newSubjectXP = Math.max(0, prevSubject.xp + xpDelta);
-  const newSubject: SubjectProgress = {
-    xp: newSubjectXP,
-    correctAnswers: prevSubject.correctAnswers + correctAnswers,
-    totalAnswers: prevSubject.totalAnswers + totalQuestions,
-    chapters: { ...prevSubject.chapters, [chapterId]: newChapter },
-  };
-
-  const newGlobalXP = Math.max(0, progress.globalXP + xpDelta);
-
-  // Badges
-  const earned = new Set<BadgeId>(progress.earnedBadges);
-  const newBadges: BadgeId[] = [];
-  const addBadge = (id: BadgeId) => {
-    if (!earned.has(id)) {
-      earned.add(id);
-      newBadges.push(id);
-    }
-  };
-
-  if (newChapter.quizAttempts.length === 1) addBadge('first_quiz');
-  if (isPerfect) addBadge('perfect_quiz');
-  if (newSubjectXP >= 100) addBadge('xp_100_subject');
-  if (streak.current >= 3) addBadge('streak_3');
-  const chapterMastery = calculateMastery(newChapter.correctAnswers, newChapter.wrongAnswers);
-  if (chapterMastery >= 80) addBadge('chapter_mastered');
-  if (prevChapter.wrongAnswers > prevChapter.correctAnswers && newChapter.correctAnswers > newChapter.wrongAnswers) {
-    addBadge('recovered_weak_chapter');
-  }
-
-  const updated: UserProgress = {
-    globalXP: newGlobalXP,
-    subjectProgress: { ...progress.subjectProgress, [subjectId]: newSubject },
-    earnedBadges: Array.from(earned),
-    streak,
-    buddies: progress.buddies,
-    competitiveMode: progress.competitiveMode,
-  };
-
-  return {
-    updated,
-    result: {
-      xpDelta,
-      completionXP,
-      perfectBonus,
-      streakBonus,
-      newBadges,
-      newGlobalXP,
-      newSubjectXP,
-      newChapterXP: chapterXP,
-      isPerfect,
-    },
-  };
+export function saveCompetitiveMode(value: boolean): void {
+  localStorage.setItem(COMPETITIVE_KEY, JSON.stringify(value));
 }

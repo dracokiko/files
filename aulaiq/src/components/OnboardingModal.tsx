@@ -1,9 +1,8 @@
-import { useState, useCallback } from 'react';
-import { institutions, coursesByInstitution } from '../data/institutions';
-import { validYearsByCourse } from '../data/subjects';
+import { useState, useCallback, useEffect } from 'react';
+import { fetchFaculdades, fetchCursos, fetchCadeiras } from '../api/catalog';
 import { signUp, getStudyPlanSuggestion } from '../utils/auth';
 import { supabase } from '../lib/supabase';
-import type { UserProfile } from '../types';
+import type { UserProfile, Institution, Course } from '../types';
 
 interface OnboardingModalProps {
   onClose: () => void;
@@ -107,6 +106,9 @@ export default function OnboardingModal({ onClose, onComplete }: OnboardingModal
   const TOTAL_STEPS = 5;
 
   const [step, setStep] = useState(0);
+  const [institutions, setInstitutions] = useState<Institution[]>([]);
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [availableYears, setAvailableYears] = useState<Array<{ value: number; label: string }>>([]);
   const [instId, setInstId] = useState('');
   const [courseId, setCourseId] = useState('');
   const [year, setYear] = useState<number | null>(null);
@@ -125,9 +127,35 @@ export default function OnboardingModal({ onClose, onComplete }: OnboardingModal
   const [profile, setProfile] = useState<UserProfile | null>(null);
 
   const selectedInst = institutions.find((i) => i.id === instId) ?? null;
-  const courses = instId ? (coursesByInstitution[instId] ?? []) : [];
   const selectedCourse = courses.find((c) => c.id === courseId) ?? null;
-  const availableYears = courseId ? (validYearsByCourse[courseId] ?? []) : [];
+
+  useEffect(() => {
+    fetchFaculdades().then(setInstitutions).catch(() => setInstitutions([]));
+  }, []);
+
+  useEffect(() => {
+    if (!instId) { setCourses([]); return; }
+    fetchCursos(instId).then(setCourses).catch(() => setCourses([]));
+  }, [instId]);
+
+  // Available years are derived from the course's real cadeiras (distinct
+  // year/year_label pairs) instead of a separate hardcoded table.
+  useEffect(() => {
+    if (!courseId || !selectedInst || !selectedCourse) { setAvailableYears([]); return; }
+    fetchCadeiras(courseId, selectedInst.name, selectedCourse.name)
+      .then((subjects) => {
+        const seen = new Map<number, string>();
+        for (const s of subjects) {
+          if (s.year > 0 && !seen.has(s.year)) seen.set(s.year, s.yearLabel);
+        }
+        setAvailableYears(
+          Array.from(seen.entries())
+            .sort(([a], [b]) => a - b)
+            .map(([value, label]) => ({ value, label }))
+        );
+      })
+      .catch(() => setAvailableYears([]));
+  }, [courseId, selectedInst, selectedCourse]);
 
   const validate = useCallback((): boolean => {
     const errs: Record<string, string> = {};
@@ -352,8 +380,12 @@ export default function OnboardingModal({ onClose, onComplete }: OnboardingModal
                             : 'border-gray-100 bg-white hover:border-gray-200 hover:bg-gray-50'
                         }`}
                       >
-                        <span className={`text-2xl w-10 h-10 flex items-center justify-center rounded-xl flex-shrink-0 ${isSelected ? 'bg-blue-100' : 'bg-gray-100'}`}>
-                          {inst.logo}
+                        <span className={`text-2xl w-10 h-10 flex items-center justify-center rounded-xl flex-shrink-0 overflow-hidden ${isSelected ? 'bg-blue-100' : 'bg-gray-100'}`}>
+                          {inst.imagemUrl ? (
+                            <img src={inst.imagemUrl} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            inst.logo
+                          )}
                         </span>
                         <div>
                           <p className={`font-bold text-sm ${isSelected ? 'text-blue-700' : 'text-gray-900'}`}>{inst.name}</p>

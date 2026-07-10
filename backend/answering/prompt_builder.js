@@ -39,9 +39,10 @@ Regras obrigatórias:
  * @param {object[]} results     — reranked retrieval results (with .chunk and .provenance)
  * @param {object}   parsed      — from parseQuery
  * @param {object[]} citations   — from buildStructuredCitation
+ * @param {object[]} [history]   — recent {role, content} turns, most recent last
  * @returns {{ systemPrompt: string, userPrompt: string, contextCharCount: number }}
  */
-export function buildPrompt(query, results, parsed, citations) {
+export function buildPrompt(query, results, parsed, citations, history = []) {
   const intent = parsed.intent ?? 'default'
   const intentInstruction = INTENT_INSTRUCTIONS[intent] ?? INTENT_INSTRUCTIONS.default
 
@@ -71,9 +72,19 @@ export function buildPrompt(query, results, parsed, citations) {
 
   const contextBlock = `<contexto>\n${contextParts.join('\n\n')}\n</contexto>`
 
+  const recentHistory = history.slice(-6)
+  const historyBlock = recentHistory.length
+    ? [
+        'Histórico recente da conversa (para entender perguntas de seguimento, ex. "explica melhor"):',
+        ...recentHistory.map(h => `${h.role === 'user' ? 'Aluno' : 'Tutor'}: ${h.content}`),
+        '',
+      ].join('\n')
+    : ''
+
   const userPrompt = [
     `Instrução específica: ${intentInstruction}`,
     '',
+    ...(historyBlock ? [historyBlock] : []),
     contextBlock,
     '',
     `Pergunta: ${query}`,

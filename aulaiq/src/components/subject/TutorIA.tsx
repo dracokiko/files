@@ -93,7 +93,7 @@ export default function TutorIA({ subject, isPaid, dailyStats, onDailyStatsUpdat
         .filter(m => m.id !== 'welcome')
         .map(m => ({ role: m.role === 'user' ? 'user' : 'assistant', content: m.content }));
 
-      const response = await fetch('/api/chat', {
+      const response = await fetch('/api/v2/chat/stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ cadeira_id: cadId, history, question }),
@@ -115,10 +115,15 @@ export default function TutorIA({ subject, isPaid, dailyStats, onDailyStatsUpdat
           const payload = line.slice(6);
           if (payload === '[DONE]') break;
           try {
-            const { text, error } = JSON.parse(payload);
-            if (error) throw new Error(error);
-            if (text) {
-              accumulated += text;
+            const parsed = JSON.parse(payload);
+            if (parsed.error) throw new Error(parsed.error);
+            if (parsed.text) {
+              accumulated += parsed.text;
+              const snap = accumulated;
+              setMessages(m => m.map(msg => msg.id === aiMsgId ? { ...msg, content: snap } : msg));
+            }
+            if (parsed.done && parsed.bibliography) {
+              accumulated += parsed.bibliography;
               const snap = accumulated;
               setMessages(m => m.map(msg => msg.id === aiMsgId ? { ...msg, content: snap } : msg));
             }
@@ -137,7 +142,10 @@ export default function TutorIA({ subject, isPaid, dailyStats, onDailyStatsUpdat
     }
   }
 
-  // Fallback demo mode when no cadeira is found in the backend
+  // Fallback demo mode only for when no matching cadeira exists at all
+  // (the /api/cadeiras/lookup fuzzy match found nothing). A cadeira that
+  // exists but has no ingested material yet is handled server-side instead —
+  // the chat stream itself returns an honest "no material found" answer.
   function sendDemo(text: string) {
     setIsTyping(true);
     setTimeout(() => {

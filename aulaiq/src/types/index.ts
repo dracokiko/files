@@ -1,8 +1,10 @@
+// id/institutionId are real Supabase UUIDs (faculdades/cursos), not slugs.
 export interface Institution {
   id: string;
   name: string;
   description: string;
   logo: string;
+  imagemUrl?: string;
 }
 
 export interface Course {
@@ -11,6 +13,7 @@ export interface Course {
   institutionId: string;
 }
 
+// id is a real cadeiras.id UUID.
 export interface Subject {
   id: string;
   name: string;
@@ -21,7 +24,9 @@ export interface Subject {
   semester: number;
   semesterLabel: string;
   isOptional?: boolean;
-  optionalChoices?: string[];
+  // Rows sharing the same (curso, year, optionalGroup) are alternative
+  // choices for the same elective slot.
+  optionalGroup?: string;
 }
 
 export interface PricingPlan {
@@ -51,6 +56,7 @@ export interface StudyPreferences {
 export type Plan = 'free' | 'essential' | 'team';
 
 export interface UserProfile {
+  id: string;
   name: string;
   email: string;
   institution: string;

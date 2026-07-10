@@ -1,5 +1,5 @@
 import type { Subject } from '../../types';
-import type { UserProgress } from '../../types/progress';
+import type { SubjectProgress, StreakData, BadgeId } from '../../types/progress';
 import type { Chapter } from '../../data/chapters';
 import { calculateLevel, calculateMastery } from '../../utils/progress';
 import XPBar from '../progress/XPBar';
@@ -11,11 +11,13 @@ import LevelBadge from '../progress/LevelBadge';
 interface ProgressTabProps {
   subject: Subject;
   chapters: Chapter[];
-  progress: UserProgress;
+  globalXP: number;
+  streak: StreakData;
+  earnedBadges: BadgeId[];
+  subjectProgress: SubjectProgress;
 }
 
-export default function ProgressTab({ subject, chapters, progress }: ProgressTabProps) {
-  const subjectProgress = progress.subjectProgress[subject.id];
+export default function ProgressTab({ subject, chapters, globalXP, streak, earnedBadges, subjectProgress }: ProgressTabProps) {
   const subjectXP = subjectProgress?.xp ?? 0;
   const subjectLevel = calculateLevel(subjectXP);
   const subjectMastery = calculateMastery(
@@ -29,14 +31,14 @@ export default function ProgressTab({ subject, chapters, progress }: ProgressTab
       <div className="grid grid-cols-2 gap-3">
         <div className="bg-gradient-to-br from-blue-50 to-violet-50 rounded-xl p-4 border border-blue-100">
           <p className="text-xs text-gray-400 font-medium mb-1">XP Global</p>
-          <p className="text-2xl font-black text-blue-600">{progress.globalXP}</p>
-          <p className="text-xs text-gray-400 mt-0.5">Nível {calculateLevel(progress.globalXP)} global</p>
+          <p className="text-2xl font-black text-blue-600">{globalXP}</p>
+          <p className="text-xs text-gray-400 mt-0.5">Nível {calculateLevel(globalXP)} global</p>
         </div>
         <div className="bg-gradient-to-br from-blue-50 to-violet-50 rounded-xl p-4 border border-blue-100">
           <p className="text-xs text-gray-400 font-medium mb-1">Streak</p>
-          <StreakBadge streak={progress.streak.current} />
+          <StreakBadge streak={streak.current} />
           <p className="text-xs text-gray-400 mt-1">
-            {progress.streak.current > 0 ? `${progress.streak.current} dia(s) seguidos` : 'Começa hoje!'}
+            {streak.current > 0 ? `${streak.current} dia(s) seguidos` : 'Começa hoje!'}
           </p>
         </div>
       </div>
@@ -98,7 +100,7 @@ export default function ProgressTab({ subject, chapters, progress }: ProgressTab
       {/* Badges */}
       <div>
         <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Conquistas</h3>
-        <BadgeGrid earned={progress.earnedBadges} />
+        <BadgeGrid earned={earnedBadges} />
       </div>
     </div>
   );

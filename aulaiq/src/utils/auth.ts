@@ -43,6 +43,7 @@ export async function signUp(params: {
 
   return {
     user: {
+      id: data.user.id,
       name: params.name,
       email: params.email.toLowerCase(),
       institution: params.institutionName,
@@ -88,6 +89,7 @@ export async function fetchProfile(userId: string): Promise<UserProfile | null> 
   if (error || !data) return null;
 
   return {
+    id: data.id,
     name: data.name,
     email: data.email,
     institution: data.institution,
