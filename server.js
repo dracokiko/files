@@ -349,7 +349,17 @@ app.use('/admin/api/v2', requireAdmin, answeringRoutes({ supabase, supabaseAdmin
 app.use('/admin/api/metrics', requireAdmin, adminMetricsRoutes(supabaseAdmin))
 
 // ── Fallback SPA ──────────────────────────────────────────────────────────────
-app.get('*', (_req, res) => res.sendFile(join(__dirname, 'aulaiq', 'dist', 'index.html')))
+// Only unmatched *page* routes fall back to index.html. Requests for missing
+// static assets (e.g. a JS chunk from a previous deploy that a stale cached
+// index.html still references) must 404 instead of getting HTML back —
+// otherwise the browser rejects it with a MIME-type error and the page stays blank.
+app.get('*', (req, res) => {
+  if (req.path.startsWith('/assets/') || /\.[a-zA-Z0-9]+$/.test(req.path)) {
+    return res.status(404).end()
+  }
+  res.setHeader('Cache-Control', 'no-store')
+  res.sendFile(join(__dirname, 'aulaiq', 'dist', 'index.html'))
+})
 
 // ── Arrancar (apenas local; na Vercel é serverless) ───────────────────────────
 if (!process.env.VERCEL) {
