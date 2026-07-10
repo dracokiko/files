@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { fetchFaculdades, fetchCursos } from '../api/catalog';
 import type { Institution, Course } from '../types';
+import PhilosopherWatermark from './PhilosopherWatermark';
 
 interface InstitutionSelectorProps {
   onCreatePlan: () => void;
@@ -37,7 +38,13 @@ export default function InstitutionSelector({ onCreatePlan }: InstitutionSelecto
   };
 
   return (
-    <section id="faculdades" className="py-24 bg-white">
+    <section id="faculdades" className="relative py-24 bg-white overflow-hidden">
+      <PhilosopherWatermark
+        src="/images/philosophers/epicurus.png"
+        name="ΕΠΙΚΟΥΡΟΣ"
+        className="right-4 2xl:right-10 top-10"
+      />
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="max-w-2xl mx-auto">
           {/* Header */}
@@ -176,7 +183,7 @@ export default function InstitutionSelector({ onCreatePlan }: InstitutionSelecto
           {/* Coming soon note */}
           <p className="text-center text-xs text-gray-400 mt-6">
             Mais instituições em breve. Tens interesse noutras faculdades?{' '}
-            <a href="mailto:hello@studylab.pt" className="text-blue-500 hover:underline">
+            <a href="mailto:keposlearn@gmail.com" className="text-blue-500 hover:underline">
               Diz-nos.
             </a>
           </p>

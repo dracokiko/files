@@ -10,13 +10,17 @@ import FAQ from './components/FAQ';
 import Footer from './components/Footer';
 import OnboardingModal from './components/OnboardingModal';
 import LoginModal from './components/LoginModal';
+import ForgotPasswordModal from './components/ForgotPasswordModal';
+import ResetPasswordModal from './components/ResetPasswordModal';
 import Dashboard from './components/Dashboard';
 import ProductShowcase from './components/landing/ProductShowcase';
+import { requestPasswordReset, updatePassword } from './utils/auth';
 
 export default function App() {
-  const { user, login, logout, register, loading } = useAuth();
+  const { user, login, logout, register, loading, recoveryMode, finishRecovery } = useAuth();
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
 
   const scrollToPlanos = () =>
     document.getElementById('planos')?.scrollIntoView({ behavior: 'smooth' });
@@ -34,6 +38,18 @@ export default function App() {
           </svg>
         </div>
       </div>
+    );
+  }
+
+  if (recoveryMode) {
+    return (
+      <ResetPasswordModal
+        onSubmit={async (password) => {
+          const { error } = await updatePassword(password);
+          return error;
+        }}
+        onDone={finishRecovery}
+      />
     );
   }
 
@@ -99,6 +115,24 @@ export default function App() {
           onSignUp={() => {
             setShowLogin(false);
             setShowOnboarding(true);
+          }}
+          onForgotPassword={() => {
+            setShowLogin(false);
+            setShowForgotPassword(true);
+          }}
+        />
+      )}
+
+      {showForgotPassword && (
+        <ForgotPasswordModal
+          onClose={() => setShowForgotPassword(false)}
+          onSubmit={async (email) => {
+            const { error } = await requestPasswordReset(email);
+            return error;
+          }}
+          onBackToLogin={() => {
+            setShowForgotPassword(false);
+            setShowLogin(true);
           }}
         />
       )}

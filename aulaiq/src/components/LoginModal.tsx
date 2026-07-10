@@ -4,9 +4,10 @@ interface LoginModalProps {
   onClose: () => void;
   onLogin: (email: string, password: string) => Promise<boolean>;
   onSignUp: () => void;
+  onForgotPassword: () => void;
 }
 
-export default function LoginModal({ onClose, onLogin, onSignUp }: LoginModalProps) {
+export default function LoginModal({ onClose, onLogin, onSignUp, onForgotPassword }: LoginModalProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -76,7 +77,13 @@ export default function LoginModal({ onClose, onLogin, onSignUp }: LoginModalPro
           <div>
             <div className="flex items-center justify-between mb-1.5">
               <label className="text-sm font-semibold text-gray-700">Password</label>
-              <a href="#" className="text-xs text-blue-500 hover:underline">Esqueceste?</a>
+              <button
+                type="button"
+                onClick={onForgotPassword}
+                className="text-xs text-blue-500 hover:underline"
+              >
+                Esqueceste?
+              </button>
             </div>
             <input
               type="password"

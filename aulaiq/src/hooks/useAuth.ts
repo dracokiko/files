@@ -6,6 +6,7 @@ import { fetchProfile, signIn, signOut } from '../utils/auth';
 export function useAuth() {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [recoveryMode, setRecoveryMode] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
@@ -18,7 +19,15 @@ export function useAuth() {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      // Supabase signs the user in with a temporary session when they click
+      // the password-reset link — intercept it and ask for a new password
+      // instead of dropping them straight into the dashboard.
+      if (event === 'PASSWORD_RECOVERY') {
+        setRecoveryMode(true);
+        return;
+      }
+
       if (session?.user) {
         let profile = await fetchProfile(session.user.id);
         if (!profile) {
@@ -50,5 +59,11 @@ export function useAuth() {
     setUser(profile);
   }, []);
 
-  return { user, login, logout, register, loading };
+  const finishRecovery = useCallback(async () => {
+    setRecoveryMode(false);
+    await signOut();
+    setUser(null);
+  }, []);
+
+  return { user, login, logout, register, loading, recoveryMode, finishRecovery };
 }
