@@ -42,7 +42,7 @@ export default function InstitutionSelector({ onCreatePlan }: InstitutionSelecto
       <PhilosopherWatermark
         src="/images/philosophers/epicurus.png"
         name="ΕΠΙΚΟΥΡΟΣ"
-        className="right-[54px] 2xl:right-[78px] top-[-73px]"
+        className="right-[54px] 2xl:right-[78px] top-[-80px]"
         imgClassName="w-[224px] 2xl:w-[269px]"
       />
 
