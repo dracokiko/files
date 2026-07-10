@@ -1,0 +1,5 @@
+# Stripe calls this webhook directly and can't send a Supabase JWT —
+# without this, `supabase functions deploy` re-enables JWT verification
+# by default and every Stripe webhook call gets rejected with 401.
+[functions.stripe-webhook]
+verify_jwt = false
