@@ -1,11 +1,18 @@
 import { useState } from 'react';
 import { faqItems } from '../data/faq';
+import PhilosopherWatermark from './PhilosopherWatermark';
 
 export default function FAQ() {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
 
   return (
-    <section id="faq" className="py-24 bg-white">
+    <section id="faq" className="relative py-24 bg-white overflow-hidden">
+      <PhilosopherWatermark
+        src="/images/philosophers/hypatia.png"
+        name="ὙΠΑΤΙΑ"
+        className="left-4 2xl:left-10 top-1/2 -translate-y-1/2"
+      />
+
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="text-center mb-14">
