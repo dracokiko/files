@@ -1,4 +1,5 @@
 import { pricingPlans } from '../data/pricing';
+import PhilosopherWatermark from './PhilosopherWatermark';
 
 interface PricingProps {
   onSelectPlan: () => void;
@@ -14,7 +15,13 @@ function CheckIcon() {
 
 export default function Pricing({ onSelectPlan }: PricingProps) {
   return (
-    <section id="planos" className="py-24 bg-gray-50">
+    <section id="planos" className="relative py-24 bg-gray-50 overflow-hidden">
+      <PhilosopherWatermark
+        src="/images/philosophers/hypatia.png"
+        name="ὙΠΑΤΙΑ"
+        className="left-4 2xl:left-10 top-10"
+      />
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="text-center mb-16">

@@ -1,5 +1,3 @@
-import PhilosopherWatermark from './PhilosopherWatermark';
-
 const steps = [
   {
     number: '01',
@@ -33,13 +31,7 @@ const steps = [
 
 export default function HowItWorks() {
   return (
-    <section id="como-funciona" className="relative py-24 bg-gray-50 overflow-hidden">
-      <PhilosopherWatermark
-        src="/images/philosophers/epicurus.png"
-        name="ΕΠΙΚΟΥΡΟΣ"
-        className="right-4 2xl:right-10 top-1/2 -translate-y-1/2"
-      />
-
+    <section id="como-funciona" className="py-24 bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="text-center mb-16">

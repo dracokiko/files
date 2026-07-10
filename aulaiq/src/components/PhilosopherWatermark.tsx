@@ -18,10 +18,10 @@ export default function PhilosopherWatermark({ src, name, className = '' }: Phil
         src={src}
         alt=""
         aria-hidden="true"
-        className="w-40 2xl:w-48 opacity-[0.07] grayscale"
+        className="w-40 2xl:w-48 opacity-[0.18] grayscale contrast-125 brightness-75"
         draggable={false}
       />
-      <figcaption className="text-xs 2xl:text-sm tracking-[0.2em] text-gray-400 opacity-40 font-serif">
+      <figcaption className="text-xs 2xl:text-sm tracking-[0.2em] text-gray-400 opacity-60 font-serif">
         {name}
       </figcaption>
     </figure>

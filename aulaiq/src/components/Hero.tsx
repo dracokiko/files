@@ -1,5 +1,3 @@
-import PhilosopherWatermark from './PhilosopherWatermark';
-
 interface HeroProps {
   onStart: () => void;
   onPlans: () => void;
@@ -117,12 +115,6 @@ export default function Hero({ onStart, onPlans }: HeroProps) {
             backgroundImage: 'radial-gradient(circle, #6366f1 1px, transparent 1px)',
             backgroundSize: '28px 28px',
           }}
-        />
-
-        <PhilosopherWatermark
-          src="/images/philosophers/socrates.png"
-          name="ΣΩΚΡΑΤΗΣ"
-          className="left-4 2xl:left-10 bottom-6"
         />
       </div>
 
