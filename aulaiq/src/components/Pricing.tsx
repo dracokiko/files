@@ -20,6 +20,7 @@ export default function Pricing({ onSelectPlan }: PricingProps) {
         src="/images/philosophers/hypatia.png"
         name="ὙΠΑΤΙΑ"
         className="left-4 2xl:left-10 top-10"
+        imgClassName="w-[192px] 2xl:w-[230px]"
       />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

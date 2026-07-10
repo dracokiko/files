@@ -2,11 +2,12 @@ import PhilosopherWatermark from '../PhilosopherWatermark';
 
 export default function ProductShowcase() {
   return (
-    <section className="relative py-24 bg-gray-50 overflow-hidden">
+    <section className="relative py-24 bg-gray-50">
       <PhilosopherWatermark
         src="/images/philosophers/socrates.png"
         name="ΣΩΚΡΑΤΗΣ"
-        className="left-4 2xl:left-10 top-10"
+        className="left-4 2xl:left-10 top-[-73px]"
+        imgClassName="w-[224px] 2xl:w-[269px]"
       />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

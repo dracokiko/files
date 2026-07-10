@@ -38,11 +38,12 @@ export default function InstitutionSelector({ onCreatePlan }: InstitutionSelecto
   };
 
   return (
-    <section id="faculdades" className="relative py-24 bg-white overflow-hidden">
+    <section id="faculdades" className="relative py-24 bg-white">
       <PhilosopherWatermark
         src="/images/philosophers/epicurus.png"
         name="ΕΠΙΚΟΥΡΟΣ"
-        className="right-4 2xl:right-10 top-10"
+        className="right-4 2xl:right-10 top-[-73px]"
+        imgClassName="w-[224px] 2xl:w-[269px]"
       />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
