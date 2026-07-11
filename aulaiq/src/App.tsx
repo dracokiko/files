@@ -14,7 +14,10 @@ import ForgotPasswordModal from './components/ForgotPasswordModal';
 import ResetPasswordModal from './components/ResetPasswordModal';
 import Dashboard from './components/Dashboard';
 import ProductShowcase from './components/landing/ProductShowcase';
+import TeamInvitationPage from './pages/TeamInvitationPage';
 import { requestPasswordReset, updatePassword } from './utils/auth';
+
+const INVITE_PATH_RE = /^\/team\/invite\/([^/]+)\/?$/;
 
 export default function App() {
   const { user, login, logout, register, loading, recoveryMode, finishRecovery } = useAuth();
@@ -53,46 +56,62 @@ export default function App() {
     );
   }
 
-  return (
-    <div className="min-h-screen bg-white font-sans antialiased">
-      {user ? (
-        /* ── Logged-in: show Dashboard ──────────────────────────────────── */
-        <Dashboard
-          user={user}
+  // No client-side router in this app (see vite.config.ts / server.js SPA
+  // fallback) — a handful of paths are recognized by inspecting
+  // window.location directly instead of pulling in react-router.
+  const inviteToken = window.location.pathname.match(INVITE_PATH_RE)?.[1] ?? null;
+  const initialDashboardView = window.location.pathname === '/dashboard/team' ? 'team' : 'subjects';
+
+  let mainContent: React.ReactNode;
+  if (inviteToken) {
+    mainContent = (
+      <TeamInvitationPage
+        token={inviteToken}
+        user={user}
+        onLoginClick={() => setShowLogin(true)}
+        onSignUpClick={() => setShowOnboarding(true)}
+        onAccepted={() => { window.location.href = '/dashboard/team'; }}
+      />
+    );
+  } else if (user) {
+    mainContent = <Dashboard user={user} onLogout={logout} initialView={initialDashboardView} />;
+  } else {
+    mainContent = (
+      <>
+        <Navbar
+          user={null}
+          onJoin={() => setShowOnboarding(true)}
+          onLogin={() => setShowLogin(true)}
           onLogout={logout}
         />
-      ) : (
-        /* ── Logged-out: show landing page ──────────────────────────────── */
-        <>
-          <Navbar
-            user={null}
-            onJoin={() => setShowOnboarding(true)}
-            onLogin={() => setShowLogin(true)}
-            onLogout={logout}
+
+        <main>
+          <Hero
+            onStart={() => setShowOnboarding(true)}
+            onPlans={scrollToPlanos}
           />
 
-          <main>
-            <Hero
-              onStart={() => setShowOnboarding(true)}
-              onPlans={scrollToPlanos}
-            />
+          <InstitutionSelector onCreatePlan={() => setShowOnboarding(true)} />
 
-            <InstitutionSelector onCreatePlan={() => setShowOnboarding(true)} />
+          <HowItWorks />
 
-            <HowItWorks />
+          <ProductShowcase />
 
-            <ProductShowcase />
+          <Features />
 
-            <Features />
+          <Pricing onSelectPlan={() => setShowOnboarding(true)} />
 
-            <Pricing onSelectPlan={() => setShowOnboarding(true)} />
+          <FAQ />
+        </main>
 
-            <FAQ />
-          </main>
+        <Footer />
+      </>
+    );
+  }
 
-          <Footer />
-        </>
-      )}
+  return (
+    <div className="min-h-screen bg-white font-sans antialiased">
+      {mainContent}
 
       {showOnboarding && (
         <OnboardingModal

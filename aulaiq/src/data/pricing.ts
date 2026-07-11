@@ -1,4 +1,5 @@
 import type { PricingPlan } from '../types';
+import { TEAM_MAX_INVITED_MEMBERS, TEAM_MAX_SEATS } from '../config/team';
 
 export const pricingPlans: PricingPlan[] = [
   {
@@ -21,7 +22,7 @@ export const pricingPlans: PricingPlan[] = [
     price: '16,99€',
     period: 'por mês',
     features: [
-      'Admin + 3 membros (4 no total)',
+      `Admin + ${TEAM_MAX_INVITED_MEMBERS} membros (${TEAM_MAX_SEATS} no total)`,
       '200 mensagens por dia por membro',
       'Quotas independentes por pessoa',
       'Todos os recursos do Essential',

@@ -14,10 +14,14 @@ import SubjectDashboard from './subject/SubjectDashboard';
 import UpsellPopup from './UpsellPopup';
 import XPBar from './progress/XPBar';
 import StreakBadge from './progress/StreakBadge';
+import TeamPage from '../pages/TeamPage';
+
+type DashboardView = 'subjects' | 'team';
 
 interface DashboardProps {
   user: UserProfile;
   onLogout: () => void;
+  initialView?: DashboardView;
 }
 
 function isPaidPlan(plan: Plan): boolean {
@@ -167,7 +171,8 @@ function SemesterSection({
 
 // ─── Main Dashboard ───────────────────────────────────────────────────────────
 
-export default function Dashboard({ user, onLogout }: DashboardProps) {
+export default function Dashboard({ user, onLogout, initialView = 'subjects' }: DashboardProps) {
+  const [view, setView] = useState<DashboardView>(initialView);
   const [dailyStats, setDailyStats] = useState<DailyStats>(() => loadDailyStats());
   const [openedSubject, setOpenedSubject] = useState<Subject | null>(null);
   const [showUpsell, setShowUpsell] = useState(false);
@@ -253,6 +258,11 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
     setDailyStats(updated);
   }
 
+  // ── Team view ──────────────────────────────────────────────────────────────
+  if (view === 'team') {
+    return <TeamPage onBack={() => setView('subjects')} />;
+  }
+
   // ── Subject dashboard view ────────────────────────────────────────────────
   if (openedSubject) {
     return (
@@ -317,6 +327,16 @@ export default function Dashboard({ user, onLogout }: DashboardProps) {
               <span className={`hidden sm:inline-flex text-xs font-semibold px-2.5 py-1 rounded-full ${PLAN_COLOR[user.plan]}`}>
                 {PLAN_LABEL[user.plan]}
               </span>
+              <button
+                onClick={() => setView('team')}
+                aria-label="Equipa"
+                title="Equipa"
+                className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0"
+              >
+                <svg className="w-4.5 h-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-1.13a4 4 0 100-8 4 4 0 000 8zm6 3c0-1.657-3.582-3-8-3s-8 1.343-8 3v2h16v-2z" />
+                </svg>
+              </button>
               <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 rounded-full">
                 <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-violet-500 flex items-center justify-center flex-shrink-0">
                   <span className="text-white text-xs font-bold">{user.name.charAt(0).toUpperCase()}</span>

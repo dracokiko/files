@@ -13,6 +13,7 @@ import answeringRoutes from './backend/routes/answering.js'
 import feedbackRoutes from './backend/routes/feedback.js'
 import chatV2Routes from './backend/routes/chat_v2.js'
 import gamificationRoutes from './backend/routes/gamification.js'
+import teamRoutes from './backend/routes/team.js'
 import { getCourseIdForCadeira } from './backend/services/course_link.js'
 import { requireUser } from './backend/middleware/auth.js'
 
@@ -326,6 +327,11 @@ app.use('/admin/api/metrics', requireAdmin, adminMetricsRoutes(supabaseAdmin))
 
 // ── Gamification (buddies/XP/quiz) — server-validated, requires real auth ────
 app.use('/api/gamification', requireUser(supabase), gamificationRoutes({ supabase, supabaseAdmin, genai }))
+
+// ── Team plan — mixed auth: the invitation-lookup route is public (an
+// invitee needs to see "you've been invited" before logging in), every
+// other route requires a verified session (enforced inside teamRoutes).
+app.use('/api/team', teamRoutes({ supabase, supabaseAdmin }))
 
 // ── Fallback SPA ──────────────────────────────────────────────────────────────
 // Only unmatched *page* routes fall back to index.html. Requests for missing
