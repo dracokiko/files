@@ -14,3 +14,4 @@ dist/
 .env.*
 .DS_Store
 .vercel
+supabase/.temp/

@@ -51,6 +51,8 @@
 
     /* ── Filters ── */
     .filters { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+    .filters input[type="text"], .filters select { width: auto; flex: 1 1 200px; }
+    .search-input { position: relative; flex: 1 1 220px; }
 
     /* ── Inputs & buttons ── */
     input[type="text"], input[type="password"], select, textarea {
@@ -107,6 +109,14 @@
     .badge-needs_review { background: #fef3c7; color: #92400e; }
     .badge-pending    { background: #f1f5f9; color: #475569; }
     .badge-failed     { background: #fef2f2; color: #dc2626; }
+    .badge-info       { background: #eff6ff; color: #1d4ed8; }
+    .badge-optional   { background: #fdf4ff; color: #a21caf; }
+
+    /* ── Count badge next to section titles ── */
+    .count-badge {
+      font-size: 0.75rem; font-weight: 600; color: #94a3b8; background: #f1f5f9;
+      padding: 2px 9px; border-radius: 20px; margin-left: 8px; vertical-align: middle;
+    }
 
     /* ── List ── */
     .item-list { display: flex; flex-direction: column; gap: 8px; }
@@ -252,8 +262,11 @@
     ═════════════════════════════════════════════════════════════════════════ -->
     <div id="tab-faculdades" class="tab-content active">
       <div class="section-header">
-        <h2>Faculdades</h2>
+        <h2>Faculdades<span class="count-badge" id="count-faculdades">0</span></h2>
         <button class="btn btn-primary" onclick="openModal('faculdade')">+ Nova Faculdade</button>
+      </div>
+      <div class="filters">
+        <input type="text" id="search-faculdades" placeholder="🔍 Pesquisar faculdade..." oninput="renderFaculdades()">
       </div>
       <div id="list-faculdades" class="item-list"></div>
     </div>
@@ -263,13 +276,14 @@
     ═════════════════════════════════════════════════════════════════════════ -->
     <div id="tab-cursos" class="tab-content">
       <div class="section-header">
-        <h2>Cursos</h2>
+        <h2>Cursos<span class="count-badge" id="count-cursos">0</span></h2>
         <button class="btn btn-primary" onclick="openModal('curso')">+ Novo Curso</button>
       </div>
       <div class="filters">
-        <select id="filter-faculdade-cursos" onchange="loadCursos()" style="max-width:280px">
+        <select id="filter-faculdade-cursos" onchange="loadCursos()">
           <option value="">Todas as faculdades</option>
         </select>
+        <input type="text" id="search-cursos" placeholder="🔍 Pesquisar curso..." oninput="renderCursos()">
       </div>
       <div id="list-cursos" class="item-list"></div>
     </div>
@@ -279,16 +293,27 @@
     ═════════════════════════════════════════════════════════════════════════ -->
     <div id="tab-cadeiras" class="tab-content">
       <div class="section-header">
-        <h2>Cadeiras</h2>
+        <h2>Cadeiras<span class="count-badge" id="count-cadeiras">0</span></h2>
         <button class="btn btn-primary" onclick="openModal('cadeira')">+ Nova Cadeira</button>
       </div>
       <div class="filters">
-        <select id="filter-faculdade-cadeiras" onchange="filterCursosCadeiras()" style="max-width:240px">
+        <select id="filter-faculdade-cadeiras" onchange="filterCursosCadeiras()">
           <option value="">Todas as faculdades</option>
         </select>
-        <select id="filter-curso-cadeiras" onchange="loadCadeiras()" style="max-width:240px">
+        <select id="filter-curso-cadeiras" onchange="loadCadeiras()">
           <option value="">Todos os cursos</option>
         </select>
+        <select id="filter-ano-cadeiras" onchange="renderCadeirasFiltered()">
+          <option value="">Todos os anos</option>
+          <option value="1">1º Ano</option>
+          <option value="2">2º Ano</option>
+          <option value="3">3º Ano</option>
+          <option value="4">4º Ano</option>
+          <option value="5">5º Ano</option>
+          <option value="6">6º Ano</option>
+          <option value="none">Sem ano definido</option>
+        </select>
+        <input type="text" id="search-cadeiras" placeholder="🔍 Pesquisar cadeira..." oninput="renderCadeirasFiltered()">
       </div>
       <div id="list-cadeiras" class="item-list"></div>
     </div>
@@ -418,8 +443,9 @@
 <div id="toast"></div>
 
 <script>
-  let faculdades = []
-  let cursos     = []
+  let faculdades  = []
+  let cursos      = []
+  let cadeirasList = []
   let editingId  = null
   let editingType = null
   let pendingFile = null
@@ -518,7 +544,22 @@
     const cursoId = document.getElementById('filter-curso-cadeiras')?.value
     const url     = cursoId ? `/admin/api/cadeiras?curso_id=${cursoId}` : '/admin/api/cadeiras'
     const data    = await api('GET', url)
-    renderCadeiras(data)
+    cadeirasList  = data
+    renderCadeirasFiltered()
+  }
+
+  function renderCadeirasFiltered() {
+    const ano    = document.getElementById('filter-ano-cadeiras')?.value
+    const search = (document.getElementById('search-cadeiras')?.value || '').toLowerCase()
+    let list = cadeirasList
+    if (ano === 'none') list = list.filter(c => !c.year)
+    else if (ano) list = list.filter(c => String(c.year || '') === ano)
+    if (search) list = list.filter(c => c.nome.toLowerCase().includes(search))
+    list = [...list].sort((a, b) =>
+      (a.year || 99) - (b.year || 99) ||
+      (a.semester || 99) - (b.semester || 99) ||
+      a.nome.localeCompare(b.nome))
+    renderCadeiras(list)
   }
 
   async function filterCursosCadeiras() {
@@ -551,8 +592,12 @@
 
   function renderFaculdades() {
     const el = document.getElementById('list-faculdades')
-    if (!faculdades.length) { el.innerHTML = emptyState('Nenhuma faculdade ainda.'); return }
-    el.innerHTML = faculdades.map(f => `
+    const search = (document.getElementById('search-faculdades')?.value || '').toLowerCase()
+    const list = search ? faculdades.filter(f => f.nome.toLowerCase().includes(search)) : faculdades
+    const countEl = document.getElementById('count-faculdades')
+    if (countEl) countEl.textContent = faculdades.length
+    if (!list.length) { el.innerHTML = emptyState(search ? 'Nenhuma faculdade encontrada.' : 'Nenhuma faculdade ainda.'); return }
+    el.innerHTML = list.map(f => `
       <div class="item-row">
         ${imgEl(f.imagem_url,'🏛')}
         <span class="item-name">${esc(f.nome)}</span>
@@ -565,15 +610,20 @@
 
   function renderCursos() {
     const el = document.getElementById('list-cursos')
-    if (!cursos.length) { el.innerHTML = emptyState('Nenhum curso ainda.'); return }
-    el.innerHTML = cursos.map(c => {
+    const search = (document.getElementById('search-cursos')?.value || '').toLowerCase()
+    const list = search ? cursos.filter(c => c.nome.toLowerCase().includes(search)) : cursos
+    const countEl = document.getElementById('count-cursos')
+    if (countEl) countEl.textContent = cursos.length
+    if (!list.length) { el.innerHTML = emptyState(search ? 'Nenhum curso encontrado.' : 'Nenhum curso ainda.'); return }
+    el.innerHTML = list.map(c => {
       const fac = faculdades.find(f => f.id === c.faculdade_id)
+      const anos = c.duracao_anos || 3
       return `
         <div class="item-row">
           ${imgEl(c.imagem_url,'📘')}
           <div style="flex:1">
             <div class="item-name">${esc(c.nome)}</div>
-            <div class="item-meta">${fac ? esc(fac.nome) : ''}</div>
+            <div class="item-meta">${fac ? esc(fac.nome) + ' · ' : ''}${anos} ano${anos > 1 ? 's' : ''}</div>
           </div>
           <div class="item-actions">
             <button class="btn btn-ghost btn-sm" onclick="openModal('curso','${c.id}')">Editar</button>
@@ -585,18 +635,26 @@
 
   function renderCadeiras(list) {
     const el = document.getElementById('list-cadeiras')
-    if (!list.length) { el.innerHTML = emptyState('Nenhuma cadeira ainda.'); return }
+    const countEl = document.getElementById('count-cadeiras')
+    if (countEl) countEl.textContent = cadeirasList.length
+    if (!list.length) { el.innerHTML = emptyState('Nenhuma cadeira encontrada.'); return }
     el.innerHTML = list.map(c => {
       const curso = cursos.find(x => x.id === c.curso_id)
       const fac   = curso ? faculdades.find(f => f.id === curso.faculdade_id) : null
       const preview = c.conteudo ? c.conteudo.slice(0, 60) + '…' : '(sem conteúdo)'
+      const badges = [
+        c.year ? `<span class="badge badge-info">${esc(c.year_label || c.year + 'º Ano')}</span>` : `<span class="badge badge-pending">Sem ano</span>`,
+        c.semester ? `<span class="badge badge-info">${esc(c.semester_label || c.semester + 'º Sem.')}</span>` : '',
+        c.is_optional ? `<span class="badge badge-optional">Opcional${c.optional_group ? ' · ' + esc(c.optional_group) : ''}</span>` : '',
+      ].filter(Boolean).join(' ')
       return `
         <div class="item-row">
           <div class="item-thumb-placeholder">📄</div>
           <div style="flex:1">
             <div class="item-name">${esc(c.nome)}</div>
             <div class="item-meta">${fac ? esc(fac.nome) + ' · ' : ''}${curso ? esc(curso.nome) : ''}</div>
-            <div class="item-meta" style="margin-top:2px">${esc(preview)}</div>
+            <div style="margin-top:5px;display:flex;gap:6px;flex-wrap:wrap">${badges}</div>
+            <div class="item-meta" style="margin-top:5px">${esc(preview)}</div>
           </div>
           <div class="item-actions">
             <button class="btn btn-ghost btn-sm" onclick='openModal("cadeira","${c.id}")'>Editar</button>
@@ -624,9 +682,34 @@
     }
     if (type === 'cadeira') {
       body += `<div class="form-group"><label>Curso</label>
-        <select id="modal-curso"><option value="">A carregar...</option></select></div>`
+        <select id="modal-curso" onchange="updateAnoOptions()"><option value="">A carregar...</option></select></div>`
+    }
+    if (type === 'curso') {
+      body += `<div class="form-group"><label>Duração (anos)</label>
+        <select id="modal-duracao">${[1,2,3,4,5,6].map(n => `<option value="${n}">${n} ano${n > 1 ? 's' : ''}</option>`).join('')}</select></div>`
     }
     body += `<div class="form-group"><label>Nome</label><input type="text" id="modal-nome" placeholder="Nome"></div>`
+    if (type === 'cadeira') {
+      body += `<div class="form-row">
+        <div class="form-group"><label>Ano</label>
+          <select id="modal-ano"><option value="">— seleciona o curso —</option></select></div>
+        <div class="form-group"><label>Semestre</label>
+          <select id="modal-semestre">
+            <option value="">— sem semestre —</option>
+            <option value="1">1º Semestre</option>
+            <option value="2">2º Semestre</option>
+          </select></div>
+        <div class="form-group"><label>Tipo</label>
+          <select id="modal-opcional" onchange="toggleOptionalGroup()">
+            <option value="false">Obrigatória</option>
+            <option value="true">Opcional</option>
+          </select></div>
+      </div>
+      <div class="form-group" id="modal-optional-group-wrap" style="display:none">
+        <label>Grupo de opcionais</label>
+        <input type="text" id="modal-optional-group" placeholder="ex: Opcionais de 3º ano — Grupo A">
+      </div>`
+    }
 
     if (type !== 'cadeira') {
       body += `<div class="form-group"><label>Imagem</label>
@@ -681,6 +764,7 @@
         if (item) {
           document.getElementById('modal-faculdade').value = item.faculdade_id
           document.getElementById('modal-nome').value = item.nome
+          document.getElementById('modal-duracao').value = item.duracao_anos || 3
           if (item.imagem_url) {
             document.getElementById('modal-img-url').value = item.imagem_url
             const prev = document.getElementById('img-preview')
@@ -689,19 +773,27 @@
           loadCursosModal()
         }
       } else if (type === 'cadeira') {
-        api('GET', '/admin/api/cadeiras').then(list => {
+        api('GET', '/admin/api/cadeiras').then(async list => {
           const item = list.find(c => c.id === id)
           if (!item) return
           const c = cursos.find(x => x.id === item.curso_id)
           if (c) {
             document.getElementById('modal-faculdade').value = c.faculdade_id
-            loadCursosModal().then(() => { document.getElementById('modal-curso').value = item.curso_id })
+            await loadCursosModal()
+            document.getElementById('modal-curso').value = item.curso_id
+            updateAnoOptions()
           }
           document.getElementById('modal-nome').value     = item.nome
           document.getElementById('modal-conteudo').value = item.conteudo || ''
+          document.getElementById('modal-ano').value      = item.year || ''
+          document.getElementById('modal-semestre').value = item.semester || ''
+          document.getElementById('modal-opcional').value = item.is_optional ? 'true' : 'false'
+          document.getElementById('modal-optional-group').value = item.optional_group || ''
+          toggleOptionalGroup()
         })
       }
     } else {
+      if (type === 'curso') document.getElementById('modal-duracao').value = 3
       if (type === 'curso' || type === 'cadeira') loadCursosModal()
     }
 
@@ -715,7 +807,27 @@
     sel.innerHTML = '<option value="">A carregar...</option>'
     if (!facId) return
     const data = await api('GET', `/admin/api/cursos?faculdade_id=${facId}`)
-    sel.innerHTML = data.map(c => `<option value="${c.id}">${esc(c.nome)}</option>`).join('')
+    sel.innerHTML = data.map(c => `<option value="${c.id}" data-duracao="${c.duracao_anos || 3}">${esc(c.nome)}</option>`).join('')
+    updateAnoOptions()
+  }
+
+  function updateAnoOptions() {
+    const cursoSel = document.getElementById('modal-curso')
+    const anoSel = document.getElementById('modal-ano')
+    if (!cursoSel || !anoSel) return
+    const opt = cursoSel.selectedOptions[0]
+    if (!opt || !opt.value) { anoSel.innerHTML = '<option value="">— seleciona o curso —</option>'; return }
+    const duracao = parseInt(opt.dataset.duracao || '3', 10)
+    const current = anoSel.value
+    anoSel.innerHTML = '<option value="">— sem ano definido —</option>' +
+      Array.from({ length: duracao }, (_, i) => `<option value="${i + 1}">${i + 1}º Ano</option>`).join('')
+    if (current) anoSel.value = current
+  }
+
+  function toggleOptionalGroup() {
+    const isOpt = document.getElementById('modal-opcional')?.value === 'true'
+    const wrap = document.getElementById('modal-optional-group-wrap')
+    if (wrap) wrap.style.display = isOpt ? 'flex' : 'none'
   }
 
   function previewFile(input) {
@@ -751,16 +863,29 @@
       } else if (editingType === 'curso') {
         const faculdade_id = document.getElementById('modal-faculdade').value
         if (!faculdade_id) { toast('Seleciona a faculdade.', 'error'); return }
+        const duracao_anos = parseInt(document.getElementById('modal-duracao').value, 10) || 3
         const imagem_url = await uploadImageIfNeeded(document.getElementById('modal-img-url'))
-        if (editingId) await api('PUT', `/admin/api/cursos/${editingId}`, { faculdade_id, nome, imagem_url })
-        else           await api('POST', '/admin/api/cursos', { faculdade_id, nome, imagem_url })
+        if (editingId) await api('PUT', `/admin/api/cursos/${editingId}`, { faculdade_id, nome, imagem_url, duracao_anos })
+        else           await api('POST', '/admin/api/cursos', { faculdade_id, nome, imagem_url, duracao_anos })
         await loadCursos()
       } else if (editingType === 'cadeira') {
         const curso_id = document.getElementById('modal-curso').value
         if (!curso_id) { toast('Seleciona o curso.', 'error'); return }
         const conteudo = document.getElementById('modal-conteudo').value.trim()
-        if (editingId) await api('PUT', `/admin/api/cadeiras/${editingId}`, { curso_id, nome, conteudo })
-        else           await api('POST', '/admin/api/cadeiras', { curso_id, nome, conteudo })
+        const yearVal = document.getElementById('modal-ano').value
+        const semVal  = document.getElementById('modal-semestre').value
+        const is_optional = document.getElementById('modal-opcional').value === 'true'
+        const payload = {
+          curso_id, nome, conteudo,
+          year: yearVal ? parseInt(yearVal, 10) : null,
+          year_label: yearVal ? `${yearVal}º Ano` : null,
+          semester: semVal ? parseInt(semVal, 10) : null,
+          semester_label: semVal ? `${semVal}º Semestre` : null,
+          is_optional,
+          optional_group: is_optional ? (document.getElementById('modal-optional-group').value.trim() || null) : null,
+        }
+        if (editingId) await api('PUT', `/admin/api/cadeiras/${editingId}`, payload)
+        else           await api('POST', '/admin/api/cadeiras', payload)
         await loadCadeiras()
       }
 

@@ -11,6 +11,7 @@ export interface Course {
   id: string;
   name: string;
   institutionId: string;
+  durationYears: number;
 }
 
 // id is a real cadeiras.id UUID.

@@ -139,7 +139,9 @@ export default function OnboardingModal({ onClose, onComplete }: OnboardingModal
   }, [instId]);
 
   // Available years are derived from the course's real cadeiras (distinct
-  // year/year_label pairs) instead of a separate hardcoded table.
+  // year/year_label pairs) instead of a separate hardcoded table. If no
+  // cadeira has a year set yet, the list stays empty — admins are expected
+  // to keep cadeira year data up to date rather than relying on a guess.
   useEffect(() => {
     if (!courseId || !selectedInst || !selectedCourse) { setAvailableYears([]); return; }
     fetchCadeiras(courseId, selectedInst.name, selectedCourse.name)

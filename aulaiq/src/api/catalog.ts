@@ -11,6 +11,7 @@ interface CursoRow {
   id: string;
   nome: string;
   imagem_url: string | null;
+  duracao_anos: number | null;
 }
 
 interface CadeiraRow {
@@ -41,7 +42,7 @@ export async function fetchCursos(faculdadeId: string): Promise<Course[]> {
   const res = await fetch(`/api/cursos?faculdade_id=${encodeURIComponent(faculdadeId)}`);
   if (!res.ok) throw new Error('Erro ao carregar cursos.');
   const rows: CursoRow[] = await res.json();
-  return rows.map((r) => ({ id: r.id, name: r.nome, institutionId: faculdadeId }));
+  return rows.map((r) => ({ id: r.id, name: r.nome, institutionId: faculdadeId, durationYears: r.duracao_anos ?? 3 }));
 }
 
 // Maps a real cadeira row to the existing Subject shape so components that

@@ -66,7 +66,7 @@ app.get('/api/faculdades', async (_req, res) => {
 app.get('/api/cursos', async (req, res) => {
   const { faculdade_id } = req.query
   if (!faculdade_id) return res.status(400).json({ error: 'faculdade_id em falta.' })
-  const { data, error } = await supabase.from('cursos').select('id, nome, imagem_url').eq('faculdade_id', faculdade_id).order('nome')
+  const { data, error } = await supabase.from('cursos').select('id, nome, imagem_url, duracao_anos').eq('faculdade_id', faculdade_id).order('nome')
   if (error) return res.status(500).json({ error: error.message })
   res.json(data)
 })
@@ -218,7 +218,7 @@ app.delete('/admin/api/faculdades/:id', requireAdmin, async (req, res) => {
 
 // ── Admin: cursos CRUD ────────────────────────────────────────────────────────
 app.get('/admin/api/cursos', requireAdmin, async (req, res) => {
-  let q = supabaseAdmin.from('cursos').select('id, nome, imagem_url, faculdade_id').order('nome')
+  let q = supabaseAdmin.from('cursos').select('id, nome, imagem_url, faculdade_id, duracao_anos').order('nome')
   if (req.query.faculdade_id) q = q.eq('faculdade_id', req.query.faculdade_id)
   const { data, error } = await q
   if (error) return res.status(500).json({ error: error.message })
@@ -226,15 +226,15 @@ app.get('/admin/api/cursos', requireAdmin, async (req, res) => {
 })
 
 app.post('/admin/api/cursos', requireAdmin, async (req, res) => {
-  const { faculdade_id, nome, imagem_url } = req.body
-  const { data, error } = await supabaseAdmin.from('cursos').insert({ faculdade_id, nome, imagem_url }).select().single()
+  const { faculdade_id, nome, imagem_url, duracao_anos } = req.body
+  const { data, error } = await supabaseAdmin.from('cursos').insert({ faculdade_id, nome, imagem_url, duracao_anos: duracao_anos || 3 }).select().single()
   if (error) return res.status(500).json({ error: error.message })
   res.json(data)
 })
 
 app.put('/admin/api/cursos/:id', requireAdmin, async (req, res) => {
-  const { faculdade_id, nome, imagem_url } = req.body
-  const { data, error } = await supabaseAdmin.from('cursos').update({ faculdade_id, nome, imagem_url }).eq('id', req.params.id).select().single()
+  const { faculdade_id, nome, imagem_url, duracao_anos } = req.body
+  const { data, error } = await supabaseAdmin.from('cursos').update({ faculdade_id, nome, imagem_url, duracao_anos: duracao_anos || 3 }).eq('id', req.params.id).select().single()
   if (error) return res.status(500).json({ error: error.message })
   res.json(data)
 })
