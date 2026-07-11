@@ -153,25 +153,16 @@
     .empty-state { text-align: center; padding: 48px 20px; color: #94a3b8; background: #fff; border-radius: 10px; }
     .empty-state .icon { font-size: 2rem; margin-bottom: 8px; }
 
-    /* ── Modal ── */
-    #modal-overlay {
-      display: none; position: fixed; inset: 0;
-      background: rgba(0,0,0,0.4); z-index: 100;
-      align-items: center; justify-content: center; padding: 20px;
+    /* ── Inline edit/add form (rendered directly inside the item list) ── */
+    .inline-form-card {
+      background: #fff; border: 2px solid #3b82f6; border-radius: 10px;
+      padding: 18px 20px; box-shadow: 0 4px 16px rgba(59,130,246,0.12);
     }
-    #modal-overlay.open { display: flex; }
-    #modal {
-      background: #fff; border-radius: 16px; padding: 28px;
-      width: 100%; max-width: 540px; max-height: 90vh;
-      overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.2);
-    }
-    .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
-    .modal-header h3 { font-size: 1.1rem; color: #1e293b; }
-    .btn-close { background: none; border: none; cursor: pointer; color: #94a3b8; font-size: 1.3rem; line-height: 1; padding: 4px; }
-    .btn-close:hover { color: #1e293b; }
+    .inline-form-title { font-size: 0.75rem; font-weight: 700; color: #3b82f6; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 14px; }
+    .inline-form-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 4px; }
     .form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+    .form-group:last-child { margin-bottom: 0; }
     .form-group label { font-size: 0.8rem; font-weight: 600; color: #475569; text-transform: uppercase; letter-spacing: 0.04em; }
-    .modal-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px; }
 
     /* ── Image upload ── */
     .img-upload-area {
@@ -272,7 +263,7 @@
     <div id="tab-estrutura" class="tab-content active">
       <div class="section-header">
         <h2><span id="estrutura-title-text">Faculdades</span><span class="count-badge" id="estrutura-count">0</span></h2>
-        <button class="btn btn-primary" id="estrutura-add-btn" onclick="openModal('faculdade')">+ Nova Faculdade</button>
+        <button class="btn btn-primary" id="estrutura-add-btn" onclick="startInlineAdd('faculdade')">+ Nova Faculdade</button>
       </div>
       <div class="breadcrumb" id="estrutura-breadcrumb"></div>
       <div class="filters">
@@ -388,21 +379,6 @@
   </main>
 </div>
 
-<!-- ── Modal ── -->
-<div id="modal-overlay" onclick="if(event.target===this)closeModal()">
-  <div id="modal">
-    <div class="modal-header">
-      <h3 id="modal-title">Formulário</h3>
-      <button class="btn-close" onclick="closeModal()">×</button>
-    </div>
-    <div id="modal-body"></div>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
-      <button class="btn btn-primary" id="btn-save" onclick="saveForm()">Guardar</button>
-    </div>
-  </div>
-</div>
-
 <div id="toast"></div>
 
 <script>
@@ -411,8 +387,9 @@
   let cadeirasList = []
   // Drill-down navigation state for the Estrutura Académica tab.
   let estrutura = { faculdadeId: null, cursoId: null, ano: null }
-  let editingId  = null
-  let editingType = null
+  // Inline edit/add form state: { type: 'faculdade'|'curso'|'cadeira', id: string|null }
+  // id === null means "adding a new item"; only one form is open at a time.
+  let inlineForm = null
   let pendingFile = null
   let kPendingFiles = []
   let kV2Courses = []
@@ -547,11 +524,13 @@
       titleEl.textContent = 'Faculdades'
       searchEl.placeholder = '🔍 Pesquisar faculdade...'
       addBtn.textContent = '+ Nova Faculdade'
-      addBtn.onclick = () => openModal('faculdade')
+      addBtn.onclick = () => startInlineAdd('faculdade')
       const list = search ? faculdades.filter(f => f.nome.toLowerCase().includes(search)) : faculdades
       countEl.textContent = faculdades.length
-      if (!list.length) { listEl.innerHTML = emptyState(search ? 'Nenhuma faculdade encontrada.' : 'Nenhuma faculdade ainda.'); return }
-      listEl.innerHTML = list.map(f => {
+      const addCard = inlineForm?.type === 'faculdade' && inlineForm.id === null ? renderInlineFormCard('faculdade', null) : ''
+      if (!list.length && !addCard) { listEl.innerHTML = emptyState(search ? 'Nenhuma faculdade encontrada.' : 'Nenhuma faculdade ainda.'); return }
+      listEl.innerHTML = addCard + list.map(f => {
+        if (inlineForm?.type === 'faculdade' && inlineForm.id === f.id) return renderInlineFormCard('faculdade', f)
         const n = cursos.filter(c => c.faculdade_id === f.id).length
         return `
         <div class="item-row clickable" onclick="estruturaGotoFaculdade('${f.id}')">
@@ -561,12 +540,13 @@
             <div class="item-meta">${n} curso${n === 1 ? '' : 's'}</div>
           </div>
           <div class="item-actions" onclick="event.stopPropagation()">
-            <button class="btn btn-ghost btn-sm" onclick="openModal('faculdade','${f.id}')">Editar</button>
-            <button class="btn btn-danger btn-sm" onclick="deleteItem('faculdade','${f.id}','${esc(f.nome)}')">Apagar</button>
+            <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();startInlineEdit('faculdade','${f.id}')">Editar</button>
+            <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deleteItem('faculdade','${f.id}','${esc(f.nome)}')">Apagar</button>
           </div>
           <span class="item-chevron">›</span>
         </div>`
       }).join('')
+      attachInlineHandlers()
       return
     }
 
@@ -574,12 +554,14 @@
       titleEl.textContent = 'Cursos'
       searchEl.placeholder = '🔍 Pesquisar curso...'
       addBtn.textContent = '+ Novo Curso'
-      addBtn.onclick = () => openModal('curso', null, { faculdade_id: fac.id })
+      addBtn.onclick = () => startInlineAdd('curso')
       const all  = cursos.filter(c => c.faculdade_id === fac.id)
       const list = search ? all.filter(c => c.nome.toLowerCase().includes(search)) : all
       countEl.textContent = all.length
-      if (!list.length) { listEl.innerHTML = emptyState(search ? 'Nenhum curso encontrado.' : 'Esta faculdade ainda não tem cursos.'); return }
-      listEl.innerHTML = list.map(c => {
+      const addCard = inlineForm?.type === 'curso' && inlineForm.id === null ? renderInlineFormCard('curso', null) : ''
+      if (!list.length && !addCard) { listEl.innerHTML = emptyState(search ? 'Nenhum curso encontrado.' : 'Esta faculdade ainda não tem cursos.'); return }
+      listEl.innerHTML = addCard + list.map(c => {
+        if (inlineForm?.type === 'curso' && inlineForm.id === c.id) return renderInlineFormCard('curso', c)
         const anos = c.duracao_anos || 3
         const n = cadeirasList.filter(x => x.curso_id === c.id).length
         return `
@@ -590,12 +572,13 @@
             <div class="item-meta">${anos} ano${anos > 1 ? 's' : ''} · ${n} cadeira${n === 1 ? '' : 's'}</div>
           </div>
           <div class="item-actions" onclick="event.stopPropagation()">
-            <button class="btn btn-ghost btn-sm" onclick="openModal('curso','${c.id}')">Editar</button>
-            <button class="btn btn-danger btn-sm" onclick="deleteItem('curso','${c.id}','${esc(c.nome)}')">Apagar</button>
+            <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();startInlineEdit('curso','${c.id}')">Editar</button>
+            <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deleteItem('curso','${c.id}','${esc(c.nome)}')">Apagar</button>
           </div>
           <span class="item-chevron">›</span>
         </div>`
       }).join('')
+      attachInlineHandlers()
       return
     }
 
@@ -603,7 +586,7 @@
       titleEl.textContent = 'Anos'
       searchEl.placeholder = '🔍 Pesquisar...'
       addBtn.textContent = '+ Nova Cadeira'
-      addBtn.onclick = () => openModal('cadeira', null, { faculdade_id: fac.id, curso_id: curso.id })
+      addBtn.onclick = () => startInlineAdd('cadeira')
       const duracao = curso.duracao_anos || 3
       const semAno = cadeirasList.filter(c => c.curso_id === curso.id && !c.year).length
       const rows = []
@@ -612,7 +595,8 @@
       }
       if (semAno > 0) rows.push({ key: 'none', label: 'Sem ano definido', n: semAno })
       countEl.textContent = duracao
-      listEl.innerHTML = rows.map(r => `
+      const addCard = inlineForm?.type === 'cadeira' && inlineForm.id === null ? renderInlineFormCard('cadeira', null) : ''
+      listEl.innerHTML = addCard + rows.map(r => `
         <div class="item-row clickable" onclick="estruturaGotoAno('${r.key}')">
           <div class="item-thumb-placeholder">📅</div>
           <div style="flex:1">
@@ -621,6 +605,7 @@
           </div>
           <span class="item-chevron">›</span>
         </div>`).join('')
+      attachInlineHandlers()
       return
     }
 
@@ -629,12 +614,14 @@
     titleEl.textContent = `Cadeiras · ${anoLabel}`
     searchEl.placeholder = '🔍 Pesquisar cadeira...'
     addBtn.textContent = '+ Nova Cadeira'
-    addBtn.onclick = () => openModal('cadeira', null, { faculdade_id: fac.id, curso_id: curso.id, year: estrutura.ano === 'none' ? null : Number(estrutura.ano) })
+    addBtn.onclick = () => startInlineAdd('cadeira')
     const all = cadeirasList.filter(c => c.curso_id === curso.id && (estrutura.ano === 'none' ? !c.year : String(c.year) === estrutura.ano))
     const list = search ? all.filter(c => c.nome.toLowerCase().includes(search)) : all
     countEl.textContent = all.length
-    if (!list.length) { listEl.innerHTML = emptyState(search ? 'Nenhuma cadeira encontrada.' : 'Ainda não há cadeiras neste ano.'); return }
-    listEl.innerHTML = [...list].sort((a, b) => (a.semester || 99) - (b.semester || 99) || a.nome.localeCompare(b.nome)).map(c => {
+    const addCard = inlineForm?.type === 'cadeira' && inlineForm.id === null ? renderInlineFormCard('cadeira', null) : ''
+    if (!list.length && !addCard) { listEl.innerHTML = emptyState(search ? 'Nenhuma cadeira encontrada.' : 'Ainda não há cadeiras neste ano.'); return }
+    listEl.innerHTML = addCard + [...list].sort((a, b) => (a.semester || 99) - (b.semester || 99) || a.nome.localeCompare(b.nome)).map(c => {
+      if (inlineForm?.type === 'cadeira' && inlineForm.id === c.id) return renderInlineFormCard('cadeira', c)
       const preview = c.conteudo ? c.conteudo.slice(0, 60) + '…' : '(sem conteúdo)'
       const badges = [
         c.semester ? `<span class="badge badge-info">${esc(c.semester_label || c.semester + 'º Sem.')}</span>` : '',
@@ -649,11 +636,12 @@
             <div class="item-meta" style="margin-top:5px">${esc(preview)}</div>
           </div>
           <div class="item-actions">
-            <button class="btn btn-ghost btn-sm" onclick='openModal("cadeira","${c.id}")'>Editar</button>
+            <button class="btn btn-ghost btn-sm" onclick='startInlineEdit("cadeira","${c.id}")'>Editar</button>
             <button class="btn btn-danger btn-sm" onclick='deleteItem("cadeira","${c.id}","${esc(c.nome)}")'>Apagar</button>
           </div>
         </div>`
     }).join('')
+    attachInlineHandlers()
   }
 
   function renderBreadcrumb(fac, curso) {
@@ -670,262 +658,120 @@
     }).join('')
   }
 
-  // ── Modal ─────────────────────────────────────────────────────────────────────
-  function openModal(type, id = null, prefill = null) {
-    editingType = type; editingId = id; pendingFile = null
-    const titles = { faculdade: 'Faculdade', curso: 'Curso', cadeira: 'Cadeira' }
-    document.getElementById('modal-title').textContent = (id ? 'Editar ' : 'Nova ') + titles[type]
-    let body = ''
+  // ── Inline edit/add forms (rendered directly inside the item list) ────────────
+  function startInlineAdd(type)     { inlineForm = { type, id: null }; pendingFile = null; renderEstrutura() }
+  function startInlineEdit(type, id) { inlineForm = { type, id }; pendingFile = null; renderEstrutura() }
+  function cancelInline()           { inlineForm = null; pendingFile = null; renderEstrutura() }
 
-    if (type === 'curso' || type === 'cadeira') {
-      const opts = faculdades.map(f => `<option value="${f.id}">${esc(f.nome)}</option>`).join('')
-      body += `<div class="form-group"><label>Faculdade</label>
-        <select id="modal-faculdade" onchange="loadCursosModal()">${opts}</select></div>`
-    }
-    if (type === 'cadeira') {
-      body += `<div class="form-group"><label>Curso</label>
-        <select id="modal-curso" onchange="updateAnoOptions()"><option value="">A carregar...</option></select></div>`
-    }
+  function renderInlineFormCard(type, item) {
+    const labels = { faculdade: 'Faculdade', curso: 'Curso', cadeira: 'Cadeira' }
+    return `<div class="item-row inline-form-card">
+      <div style="flex:1">
+        <div class="inline-form-title">${item ? 'A editar ' + labels[type] : 'Nova ' + labels[type]}</div>
+        ${inlineFieldsHTML(type, item)}
+        <div class="inline-form-actions">
+          <button class="btn btn-ghost btn-sm" onclick="cancelInline()">Cancelar</button>
+          <button class="btn btn-primary btn-sm" id="inline-save-btn" onclick="saveInline()">Guardar</button>
+        </div>
+      </div>
+    </div>`
+  }
+
+  function inlineFieldsHTML(type, item) {
+    let html = ''
     if (type === 'curso') {
-      body += `<div class="form-group"><label>Duração (anos)</label>
-        <select id="modal-duracao">${[1,2,3,4,5,6].map(n => `<option value="${n}">${n} ano${n > 1 ? 's' : ''}</option>`).join('')}</select></div>`
+      const duracaoAtual = item?.duracao_anos || 3
+      html += `<div class="form-group"><label>Duração (anos)</label>
+        <select id="inline-duracao">${[1,2,3,4,5,6].map(n => `<option value="${n}" ${duracaoAtual === n ? 'selected' : ''}>${n} ano${n > 1 ? 's' : ''}</option>`).join('')}</select></div>`
     }
-    body += `<div class="form-group"><label>Nome</label><input type="text" id="modal-nome" placeholder="Nome"></div>`
+    html += `<div class="form-group"><label>Nome</label><input type="text" id="inline-nome" placeholder="Nome" value="${item ? esc(item.nome) : ''}"></div>`
     if (type === 'cadeira') {
-      body += `<div class="form-row">
-        <div class="form-group"><label>Ano</label>
-          <select id="modal-ano"><option value="">— seleciona o curso —</option></select></div>
+      const curso = cursos.find(c => c.id === estrutura.cursoId)
+      const duracao = curso?.duracao_anos || 3
+      const currentYear = item ? item.year : (estrutura.ano && estrutura.ano !== 'none' ? Number(estrutura.ano) : null)
+      const anoOptions = `<option value="">— sem ano definido —</option>` +
+        Array.from({ length: duracao }, (_, i) => `<option value="${i + 1}" ${currentYear === i + 1 ? 'selected' : ''}>${i + 1}º Ano</option>`).join('')
+      html += `<div class="form-row">
+        <div class="form-group"><label>Ano</label><select id="inline-ano">${anoOptions}</select></div>
         <div class="form-group"><label>Semestre</label>
-          <select id="modal-semestre">
-            <option value="">— sem semestre —</option>
-            <option value="1">1º Semestre</option>
-            <option value="2">2º Semestre</option>
+          <select id="inline-semestre">
+            <option value="" ${!item?.semester ? 'selected' : ''}>— sem semestre —</option>
+            <option value="1" ${item?.semester === 1 ? 'selected' : ''}>1º Semestre</option>
+            <option value="2" ${item?.semester === 2 ? 'selected' : ''}>2º Semestre</option>
           </select></div>
         <div class="form-group"><label>Tipo</label>
-          <select id="modal-opcional" onchange="toggleOptionalGroup()">
-            <option value="false">Obrigatória</option>
-            <option value="true">Opcional</option>
+          <select id="inline-opcional" onchange="toggleInlineOptionalGroup()">
+            <option value="false" ${!item?.is_optional ? 'selected' : ''}>Obrigatória</option>
+            <option value="true" ${item?.is_optional ? 'selected' : ''}>Opcional</option>
           </select></div>
       </div>
-      <div class="form-group" id="modal-optional-group-wrap" style="display:none">
+      <div class="form-group" id="inline-optional-group-wrap" style="display:${item?.is_optional ? 'flex' : 'none'}">
         <label>Grupo de opcionais</label>
-        <input type="text" id="modal-optional-group" placeholder="ex: Opcionais de 3º ano — Grupo A">
+        <input type="text" id="inline-optional-group" placeholder="ex: Opcionais de 3º ano — Grupo A" value="${item?.optional_group ? esc(item.optional_group) : ''}">
       </div>`
     }
-
     if (type !== 'cadeira') {
-      body += `<div class="form-group"><label>Imagem</label>
-        <div class="img-upload-area" onclick="document.getElementById('modal-file').click()">
+      html += `<div class="form-group"><label>Imagem</label>
+        <div class="img-upload-area" onclick="document.getElementById('inline-file').click()">
           📎 Clica para escolher um ficheiro
-          <input type="file" id="modal-file" accept="image/*" style="display:none" onchange="previewFile(this)">
+          <input type="file" id="inline-file" accept="image/*" style="display:none" onchange="previewInlineFile(this)">
         </div>
-        <img id="img-preview" class="img-preview" alt="Preview">
+        <img id="inline-img-preview" class="img-preview" style="display:${item?.imagem_url ? 'block' : 'none'}" src="${item?.imagem_url ? esc(item.imagem_url) : ''}" alt="Preview">
         <div class="img-url-row"><span>ou URL:</span>
-          <input type="text" id="modal-img-url" placeholder="https://..." oninput="previewUrl(this.value)">
+          <input type="text" id="inline-img-url" placeholder="https://..." value="${item?.imagem_url ? esc(item.imagem_url) : ''}" oninput="previewInlineUrl(this.value)">
         </div></div>`
     }
-
     if (type === 'cadeira') {
-      body += `<div class="form-group"><label>Ficheiros de Resumos</label>
-        <div class="resumo-drop-area" id="resumo-drop-area" onclick="document.getElementById('resumo-files').click()">
+      html += `<div class="form-group"><label>Ficheiros de Resumos</label>
+        <div class="resumo-drop-area" id="inline-resumo-drop" onclick="document.getElementById('inline-resumo-files').click()">
           📄 Clica ou arrasta ficheiros aqui<br>
           <span style="font-size:0.75rem;color:#94a3b8">PDF · Word (.docx) · TXT</span>
-          <input type="file" id="resumo-files" multiple accept=".pdf,.docx,.doc,.txt,text/plain,application/pdf" style="display:none" onchange="handleResumoFiles(this)">
+          <input type="file" id="inline-resumo-files" multiple accept=".pdf,.docx,.doc,.txt,text/plain,application/pdf" style="display:none" onchange="handleInlineResumoFiles(this)">
         </div>
-        <div id="files-list" class="files-list"></div></div>
+        <div id="inline-files-list" class="files-list"></div></div>
       <div class="form-group"><label>Conteúdo extraído</label>
-        <textarea id="modal-conteudo" placeholder="Texto extraído ou colado manualmente." style="min-height:260px"></textarea>
+        <textarea id="inline-conteudo" placeholder="Texto extraído ou colado manualmente." style="min-height:200px">${item?.conteudo ? esc(item.conteudo) : ''}</textarea>
       </div>`
     }
-
-    document.getElementById('modal-body').innerHTML = body
-
-    if (type === 'cadeira') {
-      const area = document.getElementById('resumo-drop-area')
-      area.addEventListener('dragover',  e => { e.preventDefault(); area.classList.add('drag-over') })
-      area.addEventListener('dragleave', () => area.classList.remove('drag-over'))
-      area.addEventListener('drop', e => {
-        e.preventDefault(); area.classList.remove('drag-over')
-        processResumoFiles(Array.from(e.dataTransfer.files))
-      })
-    }
-
-    if (id) {
-      if (type === 'faculdade') {
-        const item = faculdades.find(f => f.id === id)
-        if (item) {
-          document.getElementById('modal-nome').value = item.nome
-          if (item.imagem_url) {
-            document.getElementById('modal-img-url').value = item.imagem_url
-            const prev = document.getElementById('img-preview')
-            prev.src = item.imagem_url; prev.style.display = 'block'
-          }
-        }
-      } else if (type === 'curso') {
-        const item = cursos.find(c => c.id === id)
-        if (item) {
-          document.getElementById('modal-faculdade').value = item.faculdade_id
-          document.getElementById('modal-nome').value = item.nome
-          document.getElementById('modal-duracao').value = item.duracao_anos || 3
-          if (item.imagem_url) {
-            document.getElementById('modal-img-url').value = item.imagem_url
-            const prev = document.getElementById('img-preview')
-            prev.src = item.imagem_url; prev.style.display = 'block'
-          }
-          loadCursosModal()
-        }
-      } else if (type === 'cadeira') {
-        api('GET', '/admin/api/cadeiras').then(async list => {
-          const item = list.find(c => c.id === id)
-          if (!item) return
-          const c = cursos.find(x => x.id === item.curso_id)
-          if (c) {
-            document.getElementById('modal-faculdade').value = c.faculdade_id
-            await loadCursosModal()
-            document.getElementById('modal-curso').value = item.curso_id
-            updateAnoOptions()
-          }
-          document.getElementById('modal-nome').value     = item.nome
-          document.getElementById('modal-conteudo').value = item.conteudo || ''
-          document.getElementById('modal-ano').value      = item.year || ''
-          document.getElementById('modal-semestre').value = item.semester || ''
-          document.getElementById('modal-opcional').value = item.is_optional ? 'true' : 'false'
-          document.getElementById('modal-optional-group').value = item.optional_group || ''
-          toggleOptionalGroup()
-        })
-      }
-    } else {
-      if (type === 'curso') document.getElementById('modal-duracao').value = 3
-      if (prefill?.faculdade_id) document.getElementById('modal-faculdade').value = prefill.faculdade_id
-      if (type === 'curso' || type === 'cadeira') {
-        loadCursosModal().then(() => {
-          if (type === 'cadeira' && prefill?.curso_id) {
-            document.getElementById('modal-curso').value = prefill.curso_id
-            updateAnoOptions()
-            if (prefill.year) document.getElementById('modal-ano').value = prefill.year
-          }
-        })
-      }
-    }
-
-    document.getElementById('modal-overlay').classList.add('open')
+    return html
   }
 
-  async function loadCursosModal() {
-    const facId = document.getElementById('modal-faculdade')?.value
-    const sel   = document.getElementById('modal-curso')
-    if (!sel) return
-    sel.innerHTML = '<option value="">A carregar...</option>'
-    if (!facId) return
-    const data = await api('GET', `/admin/api/cursos?faculdade_id=${facId}`)
-    sel.innerHTML = data.map(c => `<option value="${c.id}" data-duracao="${c.duracao_anos || 3}">${esc(c.nome)}</option>`).join('')
-    updateAnoOptions()
+  // Re-attach listeners that innerHTML wipes out whenever the list re-renders.
+  function attachInlineHandlers() {
+    const area = document.getElementById('inline-resumo-drop')
+    if (!area) return
+    area.addEventListener('dragover',  e => { e.preventDefault(); area.classList.add('drag-over') })
+    area.addEventListener('dragleave', () => area.classList.remove('drag-over'))
+    area.addEventListener('drop', e => {
+      e.preventDefault(); area.classList.remove('drag-over')
+      processInlineResumoFiles(Array.from(e.dataTransfer.files))
+    })
   }
 
-  function updateAnoOptions() {
-    const cursoSel = document.getElementById('modal-curso')
-    const anoSel = document.getElementById('modal-ano')
-    if (!cursoSel || !anoSel) return
-    const opt = cursoSel.selectedOptions[0]
-    if (!opt || !opt.value) { anoSel.innerHTML = '<option value="">— seleciona o curso —</option>'; return }
-    const duracao = parseInt(opt.dataset.duracao || '3', 10)
-    const current = anoSel.value
-    anoSel.innerHTML = '<option value="">— sem ano definido —</option>' +
-      Array.from({ length: duracao }, (_, i) => `<option value="${i + 1}">${i + 1}º Ano</option>`).join('')
-    if (current) anoSel.value = current
-  }
-
-  function toggleOptionalGroup() {
-    const isOpt = document.getElementById('modal-opcional')?.value === 'true'
-    const wrap = document.getElementById('modal-optional-group-wrap')
+  function toggleInlineOptionalGroup() {
+    const isOpt = document.getElementById('inline-opcional')?.value === 'true'
+    const wrap = document.getElementById('inline-optional-group-wrap')
     if (wrap) wrap.style.display = isOpt ? 'flex' : 'none'
   }
 
-  function previewFile(input) {
+  function previewInlineFile(input) {
     const file = input.files[0]; if (!file) return
     pendingFile = file
-    const prev = document.getElementById('img-preview')
+    const prev = document.getElementById('inline-img-preview')
     prev.src = URL.createObjectURL(file); prev.style.display = 'block'
   }
 
-  function previewUrl(url) {
-    const prev = document.getElementById('img-preview')
+  function previewInlineUrl(url) {
+    const prev = document.getElementById('inline-img-preview')
     if (url) { prev.src = url; prev.style.display = 'block' } else prev.style.display = 'none'
     pendingFile = null
   }
 
-  function closeModal() {
-    document.getElementById('modal-overlay').classList.remove('open')
-    editingId = editingType = pendingFile = null
-  }
+  function handleInlineResumoFiles(input) { processInlineResumoFiles(Array.from(input.files)); input.value = '' }
 
-  async function saveForm() {
-    const btn = document.getElementById('btn-save')
-    btn.disabled = true; btn.textContent = 'A guardar...'
-    try {
-      const nome = document.getElementById('modal-nome').value.trim()
-      if (!nome) { toast('O nome é obrigatório.', 'error'); return }
-
-      if (editingType === 'faculdade') {
-        const imagem_url = await uploadImageIfNeeded(document.getElementById('modal-img-url'))
-        if (editingId) await api('PUT', `/admin/api/faculdades/${editingId}`, { nome, imagem_url })
-        else           await api('POST', '/admin/api/faculdades', { nome, imagem_url })
-        await loadFaculdades()
-      } else if (editingType === 'curso') {
-        const faculdade_id = document.getElementById('modal-faculdade').value
-        if (!faculdade_id) { toast('Seleciona a faculdade.', 'error'); return }
-        const duracao_anos = parseInt(document.getElementById('modal-duracao').value, 10) || 3
-        const imagem_url = await uploadImageIfNeeded(document.getElementById('modal-img-url'))
-        if (editingId) await api('PUT', `/admin/api/cursos/${editingId}`, { faculdade_id, nome, imagem_url, duracao_anos })
-        else           await api('POST', '/admin/api/cursos', { faculdade_id, nome, imagem_url, duracao_anos })
-        await loadCursos()
-      } else if (editingType === 'cadeira') {
-        const curso_id = document.getElementById('modal-curso').value
-        if (!curso_id) { toast('Seleciona o curso.', 'error'); return }
-        const conteudo = document.getElementById('modal-conteudo').value.trim()
-        const yearVal = document.getElementById('modal-ano').value
-        const semVal  = document.getElementById('modal-semestre').value
-        const is_optional = document.getElementById('modal-opcional').value === 'true'
-        const payload = {
-          curso_id, nome, conteudo,
-          year: yearVal ? parseInt(yearVal, 10) : null,
-          year_label: yearVal ? `${yearVal}º Ano` : null,
-          semester: semVal ? parseInt(semVal, 10) : null,
-          semester_label: semVal ? `${semVal}º Semestre` : null,
-          is_optional,
-          optional_group: is_optional ? (document.getElementById('modal-optional-group').value.trim() || null) : null,
-        }
-        if (editingId) await api('PUT', `/admin/api/cadeiras/${editingId}`, payload)
-        else           await api('POST', '/admin/api/cadeiras', payload)
-        await loadCadeiras()
-      }
-
-      closeModal(); toast('Guardado com sucesso!', 'success')
-    } catch (err) {
-      toast(err.message, 'error')
-    } finally {
-      btn.disabled = false; btn.textContent = 'Guardar'
-    }
-  }
-
-  async function deleteItem(type, id, nome) {
-    if (!confirm(`Apagar "${nome}"? Esta ação não pode ser desfeita.`)) return
-    const endpoints = { faculdade: 'faculdades', curso: 'cursos', cadeira: 'cadeiras' }
-    try {
-      await api('DELETE', `/admin/api/${endpoints[type]}/${id}`)
-      if (type === 'faculdade') await loadFaculdades()
-      else if (type === 'curso') await loadCursos()
-      else await loadCadeiras()
-      toast('Apagado.', 'success')
-    } catch (err) { toast(err.message, 'error') }
-  }
-
-  // ── Upload de resumos (cadeira modal) ─────────────────────────────────────────
-  function handleResumoFiles(input) { processResumoFiles(Array.from(input.files)); input.value = '' }
-
-  async function processResumoFiles(files) {
-    const listEl     = document.getElementById('files-list')
-    const conteudoEl = document.getElementById('modal-conteudo')
+  async function processInlineResumoFiles(files) {
+    const listEl     = document.getElementById('inline-files-list')
+    const conteudoEl = document.getElementById('inline-conteudo')
     if (!listEl || !conteudoEl) return
     for (const file of files) {
       if (file.size > 30 * 1024 * 1024) { toast(`"${file.name}" excede 30 MB — ignorado.`, 'error'); continue }
@@ -946,6 +792,70 @@
         itemEl.querySelector('.fname').textContent += ` — ${err.message}`
       }
     }
+  }
+
+  async function saveInline() {
+    const btn = document.getElementById('inline-save-btn')
+    btn.disabled = true; btn.textContent = 'A guardar...'
+    try {
+      const nome = document.getElementById('inline-nome').value.trim()
+      if (!nome) { toast('O nome é obrigatório.', 'error'); return }
+      const { type, id } = inlineForm
+
+      if (type === 'faculdade') {
+        const imagem_url = await uploadImageIfNeeded(document.getElementById('inline-img-url'))
+        if (id) await api('PUT', `/admin/api/faculdades/${id}`, { nome, imagem_url })
+        else    await api('POST', '/admin/api/faculdades', { nome, imagem_url })
+        inlineForm = null
+        await loadFaculdades()
+      } else if (type === 'curso') {
+        const faculdade_id = estrutura.faculdadeId
+        const duracao_anos = parseInt(document.getElementById('inline-duracao').value, 10) || 3
+        const imagem_url = await uploadImageIfNeeded(document.getElementById('inline-img-url'))
+        if (id) await api('PUT', `/admin/api/cursos/${id}`, { faculdade_id, nome, imagem_url, duracao_anos })
+        else    await api('POST', '/admin/api/cursos', { faculdade_id, nome, imagem_url, duracao_anos })
+        inlineForm = null
+        await loadCursos()
+      } else if (type === 'cadeira') {
+        const curso_id = estrutura.cursoId
+        const conteudo = document.getElementById('inline-conteudo').value.trim()
+        const yearVal = document.getElementById('inline-ano').value
+        const semVal  = document.getElementById('inline-semestre').value
+        const is_optional = document.getElementById('inline-opcional').value === 'true'
+        const payload = {
+          curso_id, nome, conteudo,
+          year: yearVal ? parseInt(yearVal, 10) : null,
+          year_label: yearVal ? `${yearVal}º Ano` : null,
+          semester: semVal ? parseInt(semVal, 10) : null,
+          semester_label: semVal ? `${semVal}º Semestre` : null,
+          is_optional,
+          optional_group: is_optional ? (document.getElementById('inline-optional-group').value.trim() || null) : null,
+        }
+        if (id) await api('PUT', `/admin/api/cadeiras/${id}`, payload)
+        else    await api('POST', '/admin/api/cadeiras', payload)
+        inlineForm = null
+        await loadCadeiras()
+      }
+
+      toast('Guardado com sucesso!', 'success')
+    } catch (err) {
+      toast(err.message, 'error')
+    } finally {
+      const b = document.getElementById('inline-save-btn')
+      if (b) { b.disabled = false; b.textContent = 'Guardar' }
+    }
+  }
+
+  async function deleteItem(type, id, nome) {
+    if (!confirm(`Apagar "${nome}"? Esta ação não pode ser desfeita.`)) return
+    const endpoints = { faculdade: 'faculdades', curso: 'cursos', cadeira: 'cadeiras' }
+    try {
+      await api('DELETE', `/admin/api/${endpoints[type]}/${id}`)
+      if (type === 'faculdade') await loadFaculdades()
+      else if (type === 'curso') await loadCursos()
+      else await loadCadeiras()
+      toast('Apagado.', 'success')
+    } catch (err) { toast(err.message, 'error') }
   }
 
   // ══════════════════════════════════════════════════════════════════════════════
