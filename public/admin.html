@@ -118,6 +118,14 @@
       padding: 2px 9px; border-radius: 20px; margin-left: 8px; vertical-align: middle;
     }
 
+    /* ── Breadcrumb (drill-down navigation) ── */
+    .breadcrumb { display: flex; align-items: center; gap: 4px; margin-bottom: 18px; font-size: 0.85rem; flex-wrap: wrap; }
+    .breadcrumb .crumb { color: #64748b; padding: 5px 10px; border-radius: 8px; transition: all 0.15s; }
+    .breadcrumb .crumb[data-clickable] { cursor: pointer; }
+    .breadcrumb .crumb[data-clickable]:hover { background: #eff6ff; color: #2563eb; }
+    .breadcrumb .crumb.current { color: #1e293b; font-weight: 700; background: #f1f5f9; }
+    .breadcrumb .sep { color: #cbd5e1; font-size: 0.8rem; }
+
     /* ── List ── */
     .item-list { display: flex; flex-direction: column; gap: 8px; }
     .item-row {
@@ -125,6 +133,9 @@
       display: flex; align-items: center; gap: 12px;
       box-shadow: 0 1px 3px rgba(0,0,0,0.06);
     }
+    .item-row.clickable { cursor: pointer; transition: background 0.12s, box-shadow 0.12s, transform 0.12s; }
+    .item-row.clickable:hover { background: #f8fafc; box-shadow: 0 3px 10px rgba(0,0,0,0.08); transform: translateY(-1px); }
+    .item-chevron { color: #cbd5e1; font-size: 1.3rem; flex-shrink: 0; }
     .item-thumb {
       width: 42px; height: 42px; border-radius: 8px; object-fit: cover;
       background: #f1f5f9; flex-shrink: 0; border: 1px solid #e2e8f0;
@@ -247,9 +258,7 @@
 <div id="admin-screen">
   <header>
     <span class="brand">🔧 AulaIQ Admin</span>
-    <button class="tab-btn active" data-tab="faculdades"  onclick="showTab('faculdades')">Faculdades</button>
-    <button class="tab-btn"        data-tab="cursos"      onclick="showTab('cursos')">Cursos</button>
-    <button class="tab-btn"        data-tab="cadeiras"    onclick="showTab('cadeiras')">Cadeiras</button>
+    <button class="tab-btn active" data-tab="estrutura"   onclick="showTab('estrutura')">Estrutura Académica</button>
     <button class="tab-btn"        data-tab="conhecimento" onclick="showTab('conhecimento')">Conhecimento</button>
     <button class="tab-btn"        data-tab="metricas"    onclick="showTab('metricas')">Métricas</button>
     <button class="btn-logout" onclick="logout()">Sair</button>
@@ -258,64 +267,18 @@
   <main>
 
     <!-- ════════════════════════════════════════════════════════════════════════
-         FACULDADES
+         ESTRUTURA ACADÉMICA — drill-down: Faculdade → Curso → Ano → Cadeiras
     ═════════════════════════════════════════════════════════════════════════ -->
-    <div id="tab-faculdades" class="tab-content active">
+    <div id="tab-estrutura" class="tab-content active">
       <div class="section-header">
-        <h2>Faculdades<span class="count-badge" id="count-faculdades">0</span></h2>
-        <button class="btn btn-primary" onclick="openModal('faculdade')">+ Nova Faculdade</button>
+        <h2><span id="estrutura-title-text">Faculdades</span><span class="count-badge" id="estrutura-count">0</span></h2>
+        <button class="btn btn-primary" id="estrutura-add-btn" onclick="openModal('faculdade')">+ Nova Faculdade</button>
       </div>
+      <div class="breadcrumb" id="estrutura-breadcrumb"></div>
       <div class="filters">
-        <input type="text" id="search-faculdades" placeholder="🔍 Pesquisar faculdade..." oninput="renderFaculdades()">
+        <input type="text" id="estrutura-search" placeholder="🔍 Pesquisar..." oninput="renderEstrutura()">
       </div>
-      <div id="list-faculdades" class="item-list"></div>
-    </div>
-
-    <!-- ════════════════════════════════════════════════════════════════════════
-         CURSOS
-    ═════════════════════════════════════════════════════════════════════════ -->
-    <div id="tab-cursos" class="tab-content">
-      <div class="section-header">
-        <h2>Cursos<span class="count-badge" id="count-cursos">0</span></h2>
-        <button class="btn btn-primary" onclick="openModal('curso')">+ Novo Curso</button>
-      </div>
-      <div class="filters">
-        <select id="filter-faculdade-cursos" onchange="loadCursos()">
-          <option value="">Todas as faculdades</option>
-        </select>
-        <input type="text" id="search-cursos" placeholder="🔍 Pesquisar curso..." oninput="renderCursos()">
-      </div>
-      <div id="list-cursos" class="item-list"></div>
-    </div>
-
-    <!-- ════════════════════════════════════════════════════════════════════════
-         CADEIRAS
-    ═════════════════════════════════════════════════════════════════════════ -->
-    <div id="tab-cadeiras" class="tab-content">
-      <div class="section-header">
-        <h2>Cadeiras<span class="count-badge" id="count-cadeiras">0</span></h2>
-        <button class="btn btn-primary" onclick="openModal('cadeira')">+ Nova Cadeira</button>
-      </div>
-      <div class="filters">
-        <select id="filter-faculdade-cadeiras" onchange="filterCursosCadeiras()">
-          <option value="">Todas as faculdades</option>
-        </select>
-        <select id="filter-curso-cadeiras" onchange="loadCadeiras()">
-          <option value="">Todos os cursos</option>
-        </select>
-        <select id="filter-ano-cadeiras" onchange="renderCadeirasFiltered()">
-          <option value="">Todos os anos</option>
-          <option value="1">1º Ano</option>
-          <option value="2">2º Ano</option>
-          <option value="3">3º Ano</option>
-          <option value="4">4º Ano</option>
-          <option value="5">5º Ano</option>
-          <option value="6">6º Ano</option>
-          <option value="none">Sem ano definido</option>
-        </select>
-        <input type="text" id="search-cadeiras" placeholder="🔍 Pesquisar cadeira..." oninput="renderCadeirasFiltered()">
-      </div>
-      <div id="list-cadeiras" class="item-list"></div>
+      <div id="estrutura-list" class="item-list"></div>
     </div>
 
     <!-- ════════════════════════════════════════════════════════════════════════
@@ -446,6 +409,8 @@
   let faculdades  = []
   let cursos      = []
   let cadeirasList = []
+  // Drill-down navigation state for the Estrutura Académica tab.
+  let estrutura = { faculdadeId: null, cursoId: null, ano: null }
   let editingId  = null
   let editingType = null
   let pendingFile = null
@@ -479,7 +444,6 @@
   // ── Init ─────────────────────────────────────────────────────────────────────
   async function init() {
     await Promise.all([loadFaculdades(), loadCursos(), loadCadeiras()])
-    populateFaculdadeFilters()
     populateKCadeiraSelect()
   }
 
@@ -489,6 +453,7 @@
     document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'))
     document.getElementById(`tab-${tab}`).classList.add('active')
     document.querySelector(`[data-tab="${tab}"]`).classList.add('active')
+    if (tab === 'estrutura') renderEstrutura()
     if (tab === 'metricas') loadMetricas()
     if (tab === 'conhecimento') { populateKCadeiraSelect(); showKnowledgeSub('novo') }
   }
@@ -526,124 +491,152 @@
 
   // ── Load data ─────────────────────────────────────────────────────────────────
   async function loadFaculdades() {
-    const data = await api('GET', '/admin/api/faculdades')
-    faculdades = data
-    renderFaculdades()
-    populateFaculdadeFilters()
+    faculdades = await api('GET', '/admin/api/faculdades')
+    renderEstrutura()
   }
 
   async function loadCursos() {
-    const facId = document.getElementById('filter-faculdade-cursos')?.value
-    const url   = facId ? `/admin/api/cursos?faculdade_id=${facId}` : '/admin/api/cursos'
-    const data  = await api('GET', url)
-    cursos = data
-    renderCursos()
+    cursos = await api('GET', '/admin/api/cursos')
+    renderEstrutura()
   }
 
   async function loadCadeiras() {
-    const cursoId = document.getElementById('filter-curso-cadeiras')?.value
-    const url     = cursoId ? `/admin/api/cadeiras?curso_id=${cursoId}` : '/admin/api/cadeiras'
-    const data    = await api('GET', url)
-    cadeirasList  = data
-    renderCadeirasFiltered()
+    cadeirasList = await api('GET', '/admin/api/cadeiras')
+    renderEstrutura()
   }
 
-  function renderCadeirasFiltered() {
-    const ano    = document.getElementById('filter-ano-cadeiras')?.value
-    const search = (document.getElementById('search-cadeiras')?.value || '').toLowerCase()
-    let list = cadeirasList
-    if (ano === 'none') list = list.filter(c => !c.year)
-    else if (ano) list = list.filter(c => String(c.year || '') === ano)
-    if (search) list = list.filter(c => c.nome.toLowerCase().includes(search))
-    list = [...list].sort((a, b) =>
-      (a.year || 99) - (b.year || 99) ||
-      (a.semester || 99) - (b.semester || 99) ||
-      a.nome.localeCompare(b.nome))
-    renderCadeiras(list)
-  }
-
-  async function filterCursosCadeiras() {
-    const facId = document.getElementById('filter-faculdade-cadeiras').value
-    const sel   = document.getElementById('filter-curso-cadeiras')
-    sel.innerHTML = '<option value="">Todos os cursos</option>'
-    if (facId) {
-      const data = await api('GET', `/admin/api/cursos?faculdade_id=${facId}`)
-      data.forEach(c => sel.add(new Option(c.nome, c.id)))
-    }
-    await loadCadeiras()
-  }
-
-  function populateFaculdadeFilters() {
-    ['filter-faculdade-cursos','filter-faculdade-cadeiras'].forEach(id => {
-      const sel = document.getElementById(id)
-      if (!sel) return
-      const val = sel.value
-      sel.innerHTML = '<option value="">Todas as faculdades</option>'
-      faculdades.forEach(f => sel.add(new Option(f.nome, f.id)))
-      sel.value = val
-    })
-  }
-
-  // ── Render lists ──────────────────────────────────────────────────────────────
+  // ── Render: drill-down (Faculdade → Curso → Ano → Cadeiras) ───────────────────
   function imgEl(url, emoji = '🏛') {
     if (url) return `<img class="item-thumb" src="${url}" alt="">`
     return `<div class="item-thumb-placeholder">${emoji}</div>`
   }
 
-  function renderFaculdades() {
-    const el = document.getElementById('list-faculdades')
-    const search = (document.getElementById('search-faculdades')?.value || '').toLowerCase()
-    const list = search ? faculdades.filter(f => f.nome.toLowerCase().includes(search)) : faculdades
-    const countEl = document.getElementById('count-faculdades')
-    if (countEl) countEl.textContent = faculdades.length
-    if (!list.length) { el.innerHTML = emptyState(search ? 'Nenhuma faculdade encontrada.' : 'Nenhuma faculdade ainda.'); return }
-    el.innerHTML = list.map(f => `
-      <div class="item-row">
-        ${imgEl(f.imagem_url,'🏛')}
-        <span class="item-name">${esc(f.nome)}</span>
-        <div class="item-actions">
-          <button class="btn btn-ghost btn-sm" onclick="openModal('faculdade','${f.id}')">Editar</button>
-          <button class="btn btn-danger btn-sm" onclick="deleteItem('faculdade','${f.id}','${esc(f.nome)}')">Apagar</button>
-        </div>
-      </div>`).join('')
+  function emptyState(msg) {
+    return `<div class="empty-state"><div class="icon">📭</div><p>${msg}</p></div>`
   }
 
-  function renderCursos() {
-    const el = document.getElementById('list-cursos')
-    const search = (document.getElementById('search-cursos')?.value || '').toLowerCase()
-    const list = search ? cursos.filter(c => c.nome.toLowerCase().includes(search)) : cursos
-    const countEl = document.getElementById('count-cursos')
-    if (countEl) countEl.textContent = cursos.length
-    if (!list.length) { el.innerHTML = emptyState(search ? 'Nenhum curso encontrado.' : 'Nenhum curso ainda.'); return }
-    el.innerHTML = list.map(c => {
-      const fac = faculdades.find(f => f.id === c.faculdade_id)
-      const anos = c.duracao_anos || 3
-      return `
-        <div class="item-row">
+  function estruturaReset()               { estrutura = { faculdadeId: null, cursoId: null, ano: null }; renderEstrutura() }
+  function estruturaGotoFaculdade(id)     { estrutura = { faculdadeId: id, cursoId: null, ano: null }; renderEstrutura() }
+  function estruturaGotoCurso(id)         { estrutura.cursoId = id; estrutura.ano = null; renderEstrutura() }
+  function estruturaGotoAno(ano)          { estrutura.ano = ano; renderEstrutura() }
+
+  function renderEstrutura() {
+    const listEl = document.getElementById('estrutura-list')
+    if (!listEl) return // tab not in DOM yet
+
+    // Guard against dangling references if the item we drilled into got deleted.
+    if (estrutura.faculdadeId && !faculdades.find(f => f.id === estrutura.faculdadeId)) {
+      estrutura = { faculdadeId: null, cursoId: null, ano: null }
+    }
+    if (estrutura.cursoId && !cursos.find(c => c.id === estrutura.cursoId)) {
+      estrutura.cursoId = null; estrutura.ano = null
+    }
+
+    const fac   = estrutura.faculdadeId ? faculdades.find(f => f.id === estrutura.faculdadeId) : null
+    const curso = estrutura.cursoId ? cursos.find(c => c.id === estrutura.cursoId) : null
+
+    renderBreadcrumb(fac, curso)
+
+    const titleEl  = document.getElementById('estrutura-title-text')
+    const countEl  = document.getElementById('estrutura-count')
+    const addBtn   = document.getElementById('estrutura-add-btn')
+    const searchEl = document.getElementById('estrutura-search')
+    const search   = (searchEl?.value || '').toLowerCase()
+
+    if (!fac) {
+      titleEl.textContent = 'Faculdades'
+      searchEl.placeholder = '🔍 Pesquisar faculdade...'
+      addBtn.textContent = '+ Nova Faculdade'
+      addBtn.onclick = () => openModal('faculdade')
+      const list = search ? faculdades.filter(f => f.nome.toLowerCase().includes(search)) : faculdades
+      countEl.textContent = faculdades.length
+      if (!list.length) { listEl.innerHTML = emptyState(search ? 'Nenhuma faculdade encontrada.' : 'Nenhuma faculdade ainda.'); return }
+      listEl.innerHTML = list.map(f => {
+        const n = cursos.filter(c => c.faculdade_id === f.id).length
+        return `
+        <div class="item-row clickable" onclick="estruturaGotoFaculdade('${f.id}')">
+          ${imgEl(f.imagem_url,'🏛')}
+          <div style="flex:1">
+            <div class="item-name">${esc(f.nome)}</div>
+            <div class="item-meta">${n} curso${n === 1 ? '' : 's'}</div>
+          </div>
+          <div class="item-actions" onclick="event.stopPropagation()">
+            <button class="btn btn-ghost btn-sm" onclick="openModal('faculdade','${f.id}')">Editar</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteItem('faculdade','${f.id}','${esc(f.nome)}')">Apagar</button>
+          </div>
+          <span class="item-chevron">›</span>
+        </div>`
+      }).join('')
+      return
+    }
+
+    if (!curso) {
+      titleEl.textContent = 'Cursos'
+      searchEl.placeholder = '🔍 Pesquisar curso...'
+      addBtn.textContent = '+ Novo Curso'
+      addBtn.onclick = () => openModal('curso', null, { faculdade_id: fac.id })
+      const all  = cursos.filter(c => c.faculdade_id === fac.id)
+      const list = search ? all.filter(c => c.nome.toLowerCase().includes(search)) : all
+      countEl.textContent = all.length
+      if (!list.length) { listEl.innerHTML = emptyState(search ? 'Nenhum curso encontrado.' : 'Esta faculdade ainda não tem cursos.'); return }
+      listEl.innerHTML = list.map(c => {
+        const anos = c.duracao_anos || 3
+        const n = cadeirasList.filter(x => x.curso_id === c.id).length
+        return `
+        <div class="item-row clickable" onclick="estruturaGotoCurso('${c.id}')">
           ${imgEl(c.imagem_url,'📘')}
           <div style="flex:1">
             <div class="item-name">${esc(c.nome)}</div>
-            <div class="item-meta">${fac ? esc(fac.nome) + ' · ' : ''}${anos} ano${anos > 1 ? 's' : ''}</div>
+            <div class="item-meta">${anos} ano${anos > 1 ? 's' : ''} · ${n} cadeira${n === 1 ? '' : 's'}</div>
           </div>
-          <div class="item-actions">
+          <div class="item-actions" onclick="event.stopPropagation()">
             <button class="btn btn-ghost btn-sm" onclick="openModal('curso','${c.id}')">Editar</button>
             <button class="btn btn-danger btn-sm" onclick="deleteItem('curso','${c.id}','${esc(c.nome)}')">Apagar</button>
           </div>
+          <span class="item-chevron">›</span>
         </div>`
-    }).join('')
-  }
+      }).join('')
+      return
+    }
 
-  function renderCadeiras(list) {
-    const el = document.getElementById('list-cadeiras')
-    const countEl = document.getElementById('count-cadeiras')
-    if (countEl) countEl.textContent = cadeirasList.length
-    if (!list.length) { el.innerHTML = emptyState('Nenhuma cadeira encontrada.'); return }
-    el.innerHTML = list.map(c => {
-      const curso = cursos.find(x => x.id === c.curso_id)
-      const fac   = curso ? faculdades.find(f => f.id === curso.faculdade_id) : null
+    if (estrutura.ano == null) {
+      titleEl.textContent = 'Anos'
+      searchEl.placeholder = '🔍 Pesquisar...'
+      addBtn.textContent = '+ Nova Cadeira'
+      addBtn.onclick = () => openModal('cadeira', null, { faculdade_id: fac.id, curso_id: curso.id })
+      const duracao = curso.duracao_anos || 3
+      const semAno = cadeirasList.filter(c => c.curso_id === curso.id && !c.year).length
+      const rows = []
+      for (let y = 1; y <= duracao; y++) {
+        rows.push({ key: String(y), label: `${y}º Ano`, n: cadeirasList.filter(c => c.curso_id === curso.id && c.year === y).length })
+      }
+      if (semAno > 0) rows.push({ key: 'none', label: 'Sem ano definido', n: semAno })
+      countEl.textContent = duracao
+      listEl.innerHTML = rows.map(r => `
+        <div class="item-row clickable" onclick="estruturaGotoAno('${r.key}')">
+          <div class="item-thumb-placeholder">📅</div>
+          <div style="flex:1">
+            <div class="item-name">${esc(r.label)}</div>
+            <div class="item-meta">${r.n} cadeira${r.n === 1 ? '' : 's'}</div>
+          </div>
+          <span class="item-chevron">›</span>
+        </div>`).join('')
+      return
+    }
+
+    // Leaf level: cadeiras for this curso + year.
+    const anoLabel = estrutura.ano === 'none' ? 'Sem ano definido' : `${estrutura.ano}º Ano`
+    titleEl.textContent = `Cadeiras · ${anoLabel}`
+    searchEl.placeholder = '🔍 Pesquisar cadeira...'
+    addBtn.textContent = '+ Nova Cadeira'
+    addBtn.onclick = () => openModal('cadeira', null, { faculdade_id: fac.id, curso_id: curso.id, year: estrutura.ano === 'none' ? null : Number(estrutura.ano) })
+    const all = cadeirasList.filter(c => c.curso_id === curso.id && (estrutura.ano === 'none' ? !c.year : String(c.year) === estrutura.ano))
+    const list = search ? all.filter(c => c.nome.toLowerCase().includes(search)) : all
+    countEl.textContent = all.length
+    if (!list.length) { listEl.innerHTML = emptyState(search ? 'Nenhuma cadeira encontrada.' : 'Ainda não há cadeiras neste ano.'); return }
+    listEl.innerHTML = [...list].sort((a, b) => (a.semester || 99) - (b.semester || 99) || a.nome.localeCompare(b.nome)).map(c => {
       const preview = c.conteudo ? c.conteudo.slice(0, 60) + '…' : '(sem conteúdo)'
       const badges = [
-        c.year ? `<span class="badge badge-info">${esc(c.year_label || c.year + 'º Ano')}</span>` : `<span class="badge badge-pending">Sem ano</span>`,
         c.semester ? `<span class="badge badge-info">${esc(c.semester_label || c.semester + 'º Sem.')}</span>` : '',
         c.is_optional ? `<span class="badge badge-optional">Opcional${c.optional_group ? ' · ' + esc(c.optional_group) : ''}</span>` : '',
       ].filter(Boolean).join(' ')
@@ -652,8 +645,7 @@
           <div class="item-thumb-placeholder">📄</div>
           <div style="flex:1">
             <div class="item-name">${esc(c.nome)}</div>
-            <div class="item-meta">${fac ? esc(fac.nome) + ' · ' : ''}${curso ? esc(curso.nome) : ''}</div>
-            <div style="margin-top:5px;display:flex;gap:6px;flex-wrap:wrap">${badges}</div>
+            ${badges ? `<div style="margin-top:5px;display:flex;gap:6px;flex-wrap:wrap">${badges}</div>` : ''}
             <div class="item-meta" style="margin-top:5px">${esc(preview)}</div>
           </div>
           <div class="item-actions">
@@ -664,12 +656,22 @@
     }).join('')
   }
 
-  function emptyState(msg) {
-    return `<div class="empty-state"><div class="icon">📭</div><p>${msg}</p></div>`
+  function renderBreadcrumb(fac, curso) {
+    const el = document.getElementById('estrutura-breadcrumb')
+    const parts = [{ label: '🏛 Faculdades', click: 'estruturaReset()' }]
+    if (fac) parts.push({ label: esc(fac.nome), click: `estruturaGotoFaculdade('${fac.id}')` })
+    if (curso) parts.push({ label: esc(curso.nome), click: `estruturaGotoCurso('${curso.id}')` })
+    if (estrutura.ano != null) parts.push({ label: estrutura.ano === 'none' ? 'Sem ano' : `${estrutura.ano}º Ano`, click: null })
+    el.innerHTML = parts.map((p, i) => {
+      const isLast = i === parts.length - 1
+      const clickable = !isLast && p.click
+      return `<span class="crumb ${isLast ? 'current' : ''}" ${clickable ? `data-clickable onclick="${p.click}"` : ''}>${p.label}</span>` +
+        (isLast ? '' : '<span class="sep">›</span>')
+    }).join('')
   }
 
   // ── Modal ─────────────────────────────────────────────────────────────────────
-  function openModal(type, id = null) {
+  function openModal(type, id = null, prefill = null) {
     editingType = type; editingId = id; pendingFile = null
     const titles = { faculdade: 'Faculdade', curso: 'Curso', cadeira: 'Cadeira' }
     document.getElementById('modal-title').textContent = (id ? 'Editar ' : 'Nova ') + titles[type]
@@ -794,7 +796,16 @@
       }
     } else {
       if (type === 'curso') document.getElementById('modal-duracao').value = 3
-      if (type === 'curso' || type === 'cadeira') loadCursosModal()
+      if (prefill?.faculdade_id) document.getElementById('modal-faculdade').value = prefill.faculdade_id
+      if (type === 'curso' || type === 'cadeira') {
+        loadCursosModal().then(() => {
+          if (type === 'cadeira' && prefill?.curso_id) {
+            document.getElementById('modal-curso').value = prefill.curso_id
+            updateAnoOptions()
+            if (prefill.year) document.getElementById('modal-ano').value = prefill.year
+          }
+        })
+      }
     }
 
     document.getElementById('modal-overlay').classList.add('open')
