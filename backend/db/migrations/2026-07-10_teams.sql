@@ -18,6 +18,11 @@
 -- so a future pricing tier isn't blocked at the schema level.
 -- ============================================================
 
+-- Supabase installs pgcrypto into the "extensions" schema, not "public".
+-- Every SECURITY DEFINER function below pins search_path explicitly (to
+-- resist search-path hijacking) as `public, extensions` specifically so
+-- digest()/gen_random_bytes() stay resolvable — dropping the ", extensions"
+-- reintroduces "function digest(...) does not exist" at call time.
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 -- Defined in backend/db/profiles_schema.sql already, but that file may not
@@ -168,7 +173,7 @@ RETURNS TABLE (
 )
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public, extensions
 AS $$
 DECLARE
   v_email       TEXT := lower(btrim(p_email));
@@ -237,7 +242,7 @@ CREATE OR REPLACE FUNCTION team_accept_invitation(p_token TEXT, p_user_id UUID)
 RETURNS TABLE (team_id UUID, team_name TEXT)
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public, extensions
 AS $$
 DECLARE
   v_invitation  team_invitations%ROWTYPE;
@@ -326,7 +331,7 @@ RETURNS TABLE (
 )
 LANGUAGE sql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public, extensions
 STABLE
 AS $$
   SELECT
@@ -351,7 +356,7 @@ CREATE OR REPLACE FUNCTION team_accept_invitation_by_id(p_invitation_id UUID, p_
 RETURNS TABLE (team_id UUID, team_name TEXT)
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public, extensions
 AS $$
 DECLARE
   v_invitation  team_invitations%ROWTYPE;
