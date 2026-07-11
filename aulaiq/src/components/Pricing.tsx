@@ -25,7 +25,7 @@ export default function Pricing({ onSelectPlan }: PricingProps) {
       <PhilosopherWatermark
         src="/images/philosophers/aristotle.png"
         name="ΑΡΙΣΤΟΤΈΛΗΣ"
-        className="right-4 2xl:right-40 top-10"
+        className="right-4 2xl:right-50 top-10"
         imgClassName="w-[192px] 2xl:w-[230px]"
       />
 
