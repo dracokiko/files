@@ -71,7 +71,10 @@ export default function Footer() {
             <ul className="space-y-2.5">
               {['Termos de Serviço', 'Política de Privacidade', 'Cookies', 'Contacto'].map((label) => (
                 <li key={label}>
-                  <a href="#" className="text-sm text-gray-400 hover:text-white transition-colors">
+                  <a
+                    href={label === 'Contacto' ? 'mailto:keposlearn@gmail.com' : '#'}
+                    className="text-sm text-gray-400 hover:text-white transition-colors"
+                  >
                     {label}
                   </a>
                 </li>

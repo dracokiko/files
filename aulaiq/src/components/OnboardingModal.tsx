@@ -1,12 +1,18 @@
 import { useState, useCallback, useEffect } from 'react';
 import { fetchFaculdades, fetchCursos, fetchCadeiras } from '../api/catalog';
 import { signUp, getStudyPlanSuggestion } from '../utils/auth';
-import { supabase } from '../lib/supabase';
+import { startCheckout, type PaidPlanId } from '../utils/checkout';
+import { pricingPlans } from '../data/pricing';
 import type { UserProfile, Institution, Course } from '../types';
 
 interface OnboardingModalProps {
   onClose: () => void;
   onComplete: (profile: UserProfile) => void;
+  // Plan the user picked before opening the wizard (e.g. from the pricing
+  // section) — highlighted on the success screen so it's clear what to
+  // confirm next. Account creation always starts on the free plan; a plan
+  // only actually changes once Stripe checkout completes.
+  initialPlan?: PaidPlanId | null;
 }
 
 // Step sub-components
@@ -102,7 +108,7 @@ function InputField({
 
 // ---------------------------------------------------------------------------
 
-export default function OnboardingModal({ onClose, onComplete }: OnboardingModalProps) {
+export default function OnboardingModal({ onClose, onComplete, initialPlan = null }: OnboardingModalProps) {
   const TOTAL_STEPS = 5;
 
   const [step, setStep] = useState(0);
@@ -123,7 +129,8 @@ export default function OnboardingModal({ onClose, onComplete }: OnboardingModal
   const [confirmPassword, setConfirmPassword] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
-  const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [checkoutLoading, setCheckoutLoading] = useState<PaidPlanId | null>(null);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
 
   const selectedInst = institutions.find((i) => i.id === instId) ?? null;
@@ -215,38 +222,12 @@ export default function OnboardingModal({ onClose, onComplete }: OnboardingModal
     setStep(TOTAL_STEPS); // success screen
   };
 
-  const handleActivatePlan = async (planId: 'essential' | 'team') => {
-    setCheckoutLoading(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('create-checkout', {
-        body: {
-          planId,
-          successUrl: `${window.location.origin}/?payment=success`,
-          cancelUrl: `${window.location.origin}/`,
-        },
-      });
-
-      if (!error && data?.url) {
-        window.location.href = data.url;
-        return;
-      }
-    } catch {
-      // fall through to Payment Link fallback
-    }
-
-    // Fallback: Payment Link direto (enquanto Edge Function não está deployada)
-    const links: Record<string, string> = {
-      trial: import.meta.env.VITE_STRIPE_LINK_TRIAL,
-      monthly: import.meta.env.VITE_STRIPE_LINK_MONTHLY,
-      semester: import.meta.env.VITE_STRIPE_LINK_SEMESTER,
-    };
-    const fallback = links[planId];
-    if (fallback && !fallback.includes('SUBSTITUI')) {
-      window.location.href = fallback;
-    } else {
-      alert('Pagamento temporariamente indisponível. Contacta o suporte.');
-    }
-    setCheckoutLoading(false);
+  const handleActivatePlan = async (planId: PaidPlanId) => {
+    setCheckoutLoading(planId);
+    setCheckoutError(null);
+    const { error } = await startCheckout(planId);
+    if (error) setCheckoutError(error);
+    setCheckoutLoading(null);
   };
 
   const suggestion = profile ? getStudyPlanSuggestion(profile.preferences) : null;
@@ -277,8 +258,12 @@ export default function OnboardingModal({ onClose, onComplete }: OnboardingModal
             <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-violet-500 flex items-center justify-center mx-auto mb-5 shadow-lg shadow-blue-200">
               <span className="text-3xl">🎉</span>
             </div>
-            <h2 className="text-2xl font-black text-gray-900 mb-1">Plano AulaIQ criado!</h2>
-            <p className="text-gray-500 text-sm mb-8">O teu tutor está pronto, {profile.name.split(' ')[0]}.</p>
+            <h2 className="text-2xl font-black text-gray-900 mb-1">Conta criada!</h2>
+            <p className="text-gray-500 text-sm mb-1">O teu tutor está pronto, {profile.name.split(' ')[0]}.</p>
+            <p className="text-xs text-gray-400 mb-8">
+              A tua conta está atualmente no <span className="font-semibold text-gray-600">plano Grátis</span>
+              {initialPlan ? ' — confirma o pagamento abaixo para ativar o plano escolhido.' : '.'}
+            </p>
 
             <div className="bg-gradient-to-br from-blue-50 to-violet-50 rounded-2xl p-5 mb-6 text-left border border-blue-100">
               <div className="grid grid-cols-2 gap-3 mb-4">
@@ -313,31 +298,42 @@ export default function OnboardingModal({ onClose, onComplete }: OnboardingModal
             </div>
 
             <div className="space-y-3">
-              <button
-                onClick={() => handleActivatePlan('essential')}
-                disabled={checkoutLoading}
-                className="w-full py-3.5 text-sm font-bold text-white bg-gradient-to-r from-blue-600 to-violet-600 rounded-2xl hover:shadow-lg hover:shadow-blue-200 hover:scale-[1.01] transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed disabled:scale-100 flex items-center justify-center gap-2"
-              >
-                {checkoutLoading ? (
-                  <>
-                    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                    </svg>
-                    A preparar pagamento...
-                  </>
-                ) : (
-                  'Ativar Versão Essential — 5,99€/mês'
-                )}
-              </button>
-              <button
-                onClick={() => handleActivatePlan('team')}
-                disabled={checkoutLoading}
-                className="w-full py-3.5 text-sm font-semibold text-gray-700 border-2 border-gray-200 rounded-2xl hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50 transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
-              >
-                Ativar Versão Team — 16,99€/mês
-              </button>
+              {[...pricingPlans]
+                .sort((a, b) => (a.id === initialPlan ? -1 : b.id === initialPlan ? 1 : 0))
+                .map((plan) => {
+                  const planId = plan.id as PaidPlanId;
+                  const isSelected = planId === initialPlan;
+                  const isPrimary = initialPlan ? isSelected : planId === 'essential';
+                  const isLoading = checkoutLoading === planId;
+                  return (
+                    <button
+                      key={plan.id}
+                      onClick={() => handleActivatePlan(planId)}
+                      disabled={checkoutLoading !== null}
+                      className={`w-full py-3.5 text-sm font-bold rounded-2xl transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed disabled:scale-100 flex items-center justify-center gap-2 ${
+                        isPrimary
+                          ? 'text-white bg-gradient-to-r from-blue-600 to-violet-600 hover:shadow-lg hover:shadow-blue-200 hover:scale-[1.01]'
+                          : 'text-gray-700 border-2 border-gray-200 font-semibold hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50'
+                      }`}
+                    >
+                      {isLoading ? (
+                        <>
+                          <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                          </svg>
+                          A preparar pagamento...
+                        </>
+                      ) : (
+                        <>
+                          {isSelected && '✓ '}Ativar {plan.name} — {plan.price} / {plan.period}
+                        </>
+                      )}
+                    </button>
+                  );
+                })}
             </div>
+            {checkoutError && <p className="text-xs text-red-500 mt-3">{checkoutError}</p>}
             <p className="text-xs text-gray-400 mt-3">Sem compromisso. Cancela quando quiseres.</p>
             <button
               onClick={() => { onComplete(profile); }}

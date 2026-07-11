@@ -22,6 +22,7 @@ const INVITE_PATH_RE = /^\/team\/invite\/([^/]+)\/?$/;
 export default function App() {
   const { user, login, logout, register, loading, recoveryMode, finishRecovery } = useAuth();
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<'essential' | 'team' | null>(null);
   const [showLogin, setShowLogin] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
 
@@ -99,7 +100,7 @@ export default function App() {
 
           <Features />
 
-          <Pricing onSelectPlan={() => setShowOnboarding(true)} />
+          <Pricing onSelectPlan={(planId) => { setSelectedPlan(planId ?? null); setShowOnboarding(true); }} />
 
           <FAQ />
         </main>
@@ -115,10 +116,12 @@ export default function App() {
 
       {showOnboarding && (
         <OnboardingModal
-          onClose={() => setShowOnboarding(false)}
+          initialPlan={selectedPlan}
+          onClose={() => { setShowOnboarding(false); setSelectedPlan(null); }}
           onComplete={(profile) => {
             register(profile);
             setShowOnboarding(false);
+            setSelectedPlan(null);
           }}
         />
       )}

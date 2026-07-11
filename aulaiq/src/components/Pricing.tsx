@@ -2,7 +2,7 @@ import { pricingPlans } from '../data/pricing';
 import PhilosopherWatermark from './PhilosopherWatermark';
 
 interface PricingProps {
-  onSelectPlan: () => void;
+  onSelectPlan: (planId?: 'essential' | 'team') => void;
 }
 
 function CheckIcon() {
@@ -50,7 +50,7 @@ export default function Pricing({ onSelectPlan }: PricingProps) {
               <div className="flex items-center gap-2"><CheckIcon /><span>Acesso ao chatbot</span></div>
             </div>
             <button
-              onClick={onSelectPlan}
+              onClick={() => onSelectPlan()}
               className="text-sm font-semibold text-gray-600 border border-gray-200 px-5 py-2.5 rounded-xl hover:border-gray-300 hover:bg-gray-50 transition-all duration-200 whitespace-nowrap"
             >
               Criar conta grátis
@@ -88,7 +88,7 @@ export default function Pricing({ onSelectPlan }: PricingProps) {
                       </ul>
                     </div>
                     <button
-                      onClick={onSelectPlan}
+                      onClick={() => onSelectPlan(plan.id as 'essential' | 'team')}
                       className="mt-8 w-full py-3 text-sm font-bold text-white bg-gradient-to-r from-blue-600 to-violet-600 rounded-xl hover:shadow-lg hover:shadow-blue-200 hover:scale-[1.02] transition-all duration-200"
                     >
                       {plan.cta}
@@ -117,7 +117,7 @@ export default function Pricing({ onSelectPlan }: PricingProps) {
                   </ul>
                 </div>
                 <button
-                  onClick={onSelectPlan}
+                  onClick={() => onSelectPlan(plan.id as 'essential' | 'team')}
                   className="mt-8 w-full py-3 text-sm font-semibold text-gray-700 border border-gray-200 rounded-xl hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50 transition-all duration-200"
                 >
                   {plan.cta}

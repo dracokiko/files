@@ -1,6 +1,9 @@
+import { useState } from 'react';
+import { startCheckout, type PaidPlanId } from '../utils/checkout';
+import { pricingPlans } from '../data/pricing';
+
 interface UpsellPopupProps {
   onClose: () => void;
-  onViewPlans?: () => void;
 }
 
 const GADGETS = [
@@ -12,7 +15,18 @@ const GADGETS = [
   'Correções e critérios quando disponíveis',
 ];
 
-export default function UpsellPopup({ onClose, onViewPlans }: UpsellPopupProps) {
+export default function UpsellPopup({ onClose }: UpsellPopupProps) {
+  const [loadingPlan, setLoadingPlan] = useState<PaidPlanId | null>(null);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
+
+  const handleActivate = async (planId: PaidPlanId) => {
+    setLoadingPlan(planId);
+    setCheckoutError(null);
+    const { error } = await startCheckout(planId);
+    if (error) setCheckoutError(error);
+    setLoadingPlan(null);
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
@@ -53,12 +67,27 @@ export default function UpsellPopup({ onClose, onViewPlans }: UpsellPopupProps) 
           ))}
         </div>
 
-        <button
-          onClick={onViewPlans ?? onClose}
-          className="w-full py-3 text-sm font-bold text-white bg-gradient-to-r from-blue-600 to-violet-600 rounded-2xl hover:shadow-lg hover:shadow-blue-200 hover:scale-[1.01] transition-all duration-200 mb-3"
-        >
-          Ver planos pagos
-        </button>
+        <div className="space-y-2 mb-3">
+          {pricingPlans.map((plan) => {
+            const planId = plan.id as PaidPlanId;
+            const isLoading = loadingPlan === planId;
+            return (
+              <button
+                key={plan.id}
+                onClick={() => handleActivate(planId)}
+                disabled={loadingPlan !== null}
+                className={`w-full py-3 text-sm font-bold rounded-2xl transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2 ${
+                  plan.highlighted
+                    ? 'text-white bg-gradient-to-r from-blue-600 to-violet-600 hover:shadow-lg hover:shadow-blue-200 hover:scale-[1.01]'
+                    : 'text-gray-700 border-2 border-gray-200 hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50'
+                }`}
+              >
+                {isLoading ? 'A preparar pagamento...' : `${plan.cta} — ${plan.price} / ${plan.period}`}
+              </button>
+            );
+          })}
+        </div>
+        {checkoutError && <p className="text-xs text-red-500 text-center mb-3">{checkoutError}</p>}
         <button
           onClick={onClose}
           className="w-full text-sm text-gray-400 hover:text-gray-600 transition-colors"
