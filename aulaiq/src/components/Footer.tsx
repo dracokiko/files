@@ -10,10 +10,10 @@ export default function Footer() {
           {/* Brand */}
           <div className="md:col-span-2">
             <div className="flex items-center gap-2 mb-4">
-              <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-500 to-violet-500 flex items-center justify-center">
-                <span className="text-white font-black text-sm">S</span>
+              <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center p-1.5">
+                <img src="/images/logo-mark.png" alt="" className="w-full h-full object-contain" />
               </div>
-              <span className="font-black text-xl text-white">StudyLab</span>
+              <span className="font-black text-xl text-white">Kepos</span>
             </div>
             <p className="text-sm text-gray-400 leading-relaxed max-w-sm">
               Estudo universitário, feito à tua medida.
@@ -85,7 +85,7 @@ export default function Footer() {
 
         <div className="border-t border-gray-800 mt-12 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-xs text-gray-500">
-            © {new Date().getFullYear()} StudyLab. Todos os direitos reservados.
+            © {new Date().getFullYear()} Kepos. Todos os direitos reservados.
           </p>
           <p className="text-xs text-gray-600">
             Feito em Portugal 🇵🇹 para estudantes universitários

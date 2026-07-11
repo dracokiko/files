@@ -39,7 +39,7 @@ export async function sendMail({ to, subject, html, text }) {
   const transport = getTransport()
   if (!transport) return false
 
-  const fromName = process.env.SMTP_FROM_NAME || 'AulaIQ'
+  const fromName = process.env.SMTP_FROM_NAME || 'Kepos'
   const fromAddress = process.env.SMTP_USER
 
   try {
@@ -52,11 +52,11 @@ export async function sendMail({ to, subject, html, text }) {
 }
 
 export function buildTeamInvitationEmail({ teamName, inviterName, inviteUrl }) {
-  const subject = `${inviterName} convidou-te para a equipa "${teamName}" no AulaIQ`
-  const text = `${inviterName} convidou-te para te juntares à equipa "${teamName}" no AulaIQ.\n\n` +
+  const subject = `${inviterName} convidou-te para a equipa "${teamName}" no Kepos`
+  const text = `${inviterName} convidou-te para te juntares à equipa "${teamName}" no Kepos.\n\n` +
     `Aceita o convite aqui: ${inviteUrl}\n\nEste convite expira em 7 dias.`
   const html = `
-    <p>${inviterName} convidou-te para te juntares à equipa <strong>${teamName}</strong> no AulaIQ.</p>
+    <p>${inviterName} convidou-te para te juntares à equipa <strong>${teamName}</strong> no Kepos.</p>
     <p><a href="${inviteUrl}" style="display:inline-block;padding:12px 20px;background:#2563eb;color:#fff;
        border-radius:10px;text-decoration:none;font-weight:600;">Aceitar convite</a></p>
     <p style="color:#6b7280;font-size:13px;">Este convite expira em 7 dias. Se não esperavas este email, ignora-o.</p>

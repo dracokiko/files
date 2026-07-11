@@ -134,6 +134,6 @@ export function getStudyPlanSuggestion(preferences: StudyPreferences): {
   };
   return {
     rhythm: frequencyMap[preferences.studyFrequency] ?? 'Plano adaptado ao teu ritmo.',
-    plan: goalMap[preferences.mainGoal] ?? 'Plano personalizado gerado pelo AulaIQ.',
+    plan: goalMap[preferences.mainGoal] ?? 'Plano personalizado gerado pelo Kepos.',
   };
 }

@@ -22,8 +22,8 @@ function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-3xl shadow-xl border border-gray-100 w-full max-w-md p-8 text-center">
-        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-600 to-violet-600 flex items-center justify-center mx-auto mb-5">
-          <span className="text-white font-black text-lg">A</span>
+        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-600 to-violet-600 flex items-center justify-center mx-auto mb-5 p-2">
+          <img src="/images/logo-mark.png" alt="" className="w-full h-full object-contain" />
         </div>
         {children}
       </div>
@@ -147,7 +147,7 @@ export default function TeamInvitationPage({ token, user, onLoginClick, onSignUp
         {invitation.inviterName ?? 'Um administrador'} convidou-te
       </h1>
       <p className="text-sm text-gray-500 mb-6">
-        Junta-te à equipa <strong>{invitation.teamName}</strong> no AulaIQ, com o email <strong>{invitation.email}</strong>.
+        Junta-te à equipa <strong>{invitation.teamName}</strong> no Kepos, com o email <strong>{invitation.email}</strong>.
       </p>
 
       {!user ? (

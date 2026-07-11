@@ -4,12 +4,12 @@ export const faqItems: FAQItem[] = [
   {
     question: 'Isto substitui estudar?',
     answer:
-      'Não, o StudyLab é uma ferramenta que complementa o teu estudo. A plataforma ajuda-te a estudar de forma mais eficiente, focada e personalizada — mas o esforço continua a ser teu. Pensamos nisto como um tutor inteligente, não um atalho.',
+      'Não, o Kepos é uma ferramenta que complementa o teu estudo. A plataforma ajuda-te a estudar de forma mais eficiente, focada e personalizada — mas o esforço continua a ser teu. Pensamos nisto como um tutor inteligente, não um atalho.',
   },
   {
     question: 'A IA sabe mesmo a matéria da minha cadeira?',
     answer:
-      'Sim. O StudyLab é treinado com materiais específicos de cada cadeira, curso e faculdade. Quanto mais materiais forem disponibilizados (slides, PDFs, enunciados), mais precisa e útil será a experiência.',
+      'Sim. O Kepos é treinado com materiais específicos de cada cadeira, curso e faculdade. Quanto mais materiais forem disponibilizados (slides, PDFs, enunciados), mais precisa e útil será a experiência.',
   },
   {
     question: 'Como são usados os materiais dos professores?',

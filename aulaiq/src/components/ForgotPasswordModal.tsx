@@ -48,10 +48,10 @@ export default function ForgotPasswordModal({ onClose, onSubmit, onBackToLogin }
 
         <div className="bg-gradient-to-br from-blue-600 to-violet-600 px-8 pt-8 pb-6">
           <div className="flex items-center gap-3 mb-2">
-            <div className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center">
-              <span className="text-white font-black text-sm">A</span>
+            <div className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center p-1.5">
+              <img src="/images/logo-mark.png" alt="" className="w-full h-full object-contain" />
             </div>
-            <span className="text-white font-black text-lg">AulaIQ</span>
+            <span className="text-white font-black text-lg">Kepos</span>
           </div>
           <h2 className="text-xl font-black text-white">Recuperar password</h2>
           <p className="text-blue-100 text-sm mt-1">

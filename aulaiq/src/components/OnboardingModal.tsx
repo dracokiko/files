@@ -353,8 +353,8 @@ export default function OnboardingModal({ onClose, onComplete, initialPlan = nul
                   Passo {step + 1} de {TOTAL_STEPS}
                 </p>
               </div>
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-violet-600 flex items-center justify-center">
-                <span className="text-white font-black text-sm">A</span>
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-violet-600 flex items-center justify-center p-2">
+                <img src="/images/logo-mark.png" alt="" className="w-full h-full object-contain" />
               </div>
             </div>
 

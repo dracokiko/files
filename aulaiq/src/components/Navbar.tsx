@@ -45,10 +45,8 @@ export default function Navbar({ user, onJoin, onLogin, onLogout }: NavbarProps)
             onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
             className="flex items-center gap-2 group"
           >
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-600 to-violet-600 flex items-center justify-center shadow-md group-hover:shadow-blue-300 transition-shadow">
-              <span className="text-white font-black text-sm tracking-tight">S</span>
-            </div>
-            <span className="font-black text-xl text-gray-900 tracking-tight">StudyLab</span>
+            <img src="/images/logo-mark.png" alt="" className="w-8 h-8 object-contain" />
+            <span className="font-black text-xl text-gray-900 tracking-tight">Kepos</span>
           </button>
 
           {/* Desktop nav links */}
