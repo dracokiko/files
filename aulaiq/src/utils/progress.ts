@@ -1,7 +1,7 @@
 import type { DailyStats, BadgeInfo } from '../types/progress';
 
-const DAILY_KEY = 'studylab_daily';
-const COMPETITIVE_KEY = 'studylab_competitive';
+const DAILY_KEY = 'kepos_daily';
+const COMPETITIVE_KEY = 'kepos_competitive';
 
 export function safeParseLocalStorage<T>(key: string, fallback: T): T {
   try {

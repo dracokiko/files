@@ -110,7 +110,7 @@ Key column additions:
 
 ## Ingestion Flow
 
-1. `POST /admin/api/v2/ingest` with `{ base64, filename, mimeType, courseId }`
+1. `POST /admin/api/v2/ingest/sync` with `{ base64, filename, mimeType, courseId }`
 2. Document and `document_version` created in DB (SHA-256 dedup)
 3. Parser selected by file type (PDF, DOCX, LaTeX, Markdown)
 4. Chunker splits into ~700-token structure-aware chunks (prev/next linked)
@@ -121,10 +121,11 @@ Key column additions:
 9. Concepts extracted (Pass A deterministic regex + Pass B Gemini JSON)
 10. Validation issues recorded; `document_version.status` → `processed`/`needs_review`/`failed`
 
-Job runner (job_runner.js) handles async jobs with:
-- Distributed locking via `locked_by`/`locked_until` (prevents double-processing)
-- Stale lock reclaim (crashed workers auto-released after LOCK_TTL_MS)
-- Retry up to `max_attempts` with `last_error` stored on failure
+The request awaits the full pipeline before responding — there is no
+background job queue. An `ingestion_jobs` row is created and updated as the
+pipeline progresses (for the audit trail / `GET /jobs/:id`), but nothing
+processes jobs asynchronously; ingestion always runs inline within the
+request that submitted it.
 
 ---
 
@@ -169,10 +170,6 @@ Job runner (job_runner.js) handles async jobs with:
 | `CHUNK_OVERLAP_TOKENS` | `120` | Overlap between consecutive chunks |
 | `RETRIEVAL_TOP_K` | `10` | Default number of results |
 | `HNSW_EF_SEARCH` | `100` | pgvector HNSW ef_search parameter |
-| `JOB_POLL_INTERVAL_MS` | `5000` | Job runner poll interval |
-| `JOB_MAX_ATTEMPTS` | `3` | Max retries per job |
-| `JOB_LOCK_TTL_MS` | `120000` | Job lock expiry (stale lock reclaim) |
-| `JOB_WORKER_ID` | auto-generated | Worker identity for distributed locking |
 
 ---
 
@@ -194,8 +191,7 @@ Run in order in Supabase SQL Editor:
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `POST` | `/ingest` | Async ingest (returns immediately with job_id) |
-| `POST` | `/ingest/sync` | Sync ingest (waits for completion) |
+| `POST` | `/ingest/sync` | Ingest a document (awaits full pipeline before responding) |
 | `GET`  | `/jobs/:id` | Poll job status + progress_percent |
 | `GET`  | `/jobs/:id/issues` | Validation issues for a job |
 | `GET`  | `/documents` | List documents |
@@ -223,7 +219,7 @@ Run in order in Supabase SQL Editor:
 ## Commands
 
 ```bash
-# Run all unit tests (122 tests, 0 failures)
+# Run all unit tests (135 tests, 0 failures)
 node backend/tests/formula.test.js      # 14 tests
 node backend/tests/chunker.test.js      # 15 tests
 node backend/tests/query_parser.test.js # 9 tests
@@ -233,12 +229,10 @@ node backend/tests/guardrails.test.js   # 13 tests
 node backend/tests/query_intent.test.js # 19 tests
 node backend/tests/reranker.test.js     # 9 tests
 node backend/tests/eval_metrics.test.js # 19 tests
+node backend/tests/team.test.js         # 13 tests
 
 # Ingest a document (example)
 node backend/scripts/ingest_one.js --file notes.pdf --course <courseId>
-
-# Start job runner standalone (with locking)
-node backend/workers/job_runner.js
 
 # Retrieval only
 curl -X POST http://localhost:3000/api/v2/search \

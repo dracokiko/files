@@ -1,6 +1,6 @@
 import express from 'express'
 import { ingestDocument } from '../ingestion/pipeline.js'
-import { mimeToKind, SUPPORTED_KINDS } from '../ingestion/parsers/index.js'
+import { mimeToKind } from '../ingestion/parsers/index.js'
 
 /**
  * Factory: returns an Express router for the v2 knowledge ingestion API.
@@ -9,50 +9,11 @@ import { mimeToKind, SUPPORTED_KINDS } from '../ingestion/parsers/index.js'
 export default function ingestionV2Routes({ supabaseAdmin, genai }) {
   const router = express.Router()
 
-  // ── POST /ingest — submit a document for ingestion ───────────────────────
-  router.post('/ingest', async (req, res) => {
-    const { base64, filename, mimeType, courseId, title, langCode } = req.body
-
-    if (!base64)   return res.status(400).json({ error: 'base64 file data required' })
-    if (!filename) return res.status(400).json({ error: 'filename required' })
-    if (!courseId) return res.status(400).json({ error: 'courseId required' })
-
-    const sourceKind = mimeToKind(mimeType, filename)
-    if (!sourceKind) {
-      return res.status(400).json({
-        error: `Unsupported file type. Supported: ${SUPPORTED_KINDS.join(', ')}`,
-      })
-    }
-
-    let buffer
-    try {
-      buffer = Buffer.from(base64, 'base64')
-    } catch {
-      return res.status(400).json({ error: 'Invalid base64 data' })
-    }
-
-    // Respond immediately — ingest runs async
-    res.json({ status: 'queued', message: 'Document ingestion started' })
-
-    try {
-      const result = await ingestDocument({
-        buffer,
-        sourceKind,
-        filename,
-        courseId,
-        documentTitle: title ?? filename,
-        langCode: langCode ?? 'pt-PT',
-        supabaseAdmin,
-        genai,
-      })
-      // Result logged server-side; client polls via /status/:jobId
-      console.log('[ingest]', result.action, result.document_version_id, result.metrics)
-    } catch (err) {
-      console.error('[ingest] error:', err.message)
-    }
-  })
-
-  // ── POST /ingest/sync — synchronous ingest (for scripts/testing) ─────────
+  // ── POST /ingest/sync — synchronous ingest ───────────────────────────────
+  // The only ingest entry point: awaits the full pipeline before responding,
+  // which is what actually works correctly on Vercel's serverless runtime
+  // (a fire-and-forget continuation after res.json() is not reliably run
+  // to completion there). Used by the admin panel and ingest_one.js.
   router.post('/ingest/sync', async (req, res) => {
     const { base64, filename, mimeType, courseId, title, langCode } = req.body
 

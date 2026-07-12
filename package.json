@@ -1,7 +1,7 @@
 {
-  "name": "tutor-estudo",
+  "name": "kepos",
   "version": "1.0.0",
-  "description": "Tutor de estudo com Gemini AI",
+  "description": "Kepos — tutor de estudo com Gemini AI",
   "type": "module",
   "scripts": {
     "start": "node server.js",
