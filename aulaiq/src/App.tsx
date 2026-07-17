@@ -20,7 +20,7 @@ import { requestPasswordReset, updatePassword } from './utils/auth';
 const INVITE_PATH_RE = /^\/team\/invite\/([^/]+)\/?$/;
 
 export default function App() {
-  const { user, login, logout, register, loading, recoveryMode, finishRecovery } = useAuth();
+  const { user, login, logout, register, updateUser, loading, recoveryMode, finishRecovery } = useAuth();
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<'essential' | 'team' | null>(null);
   const [showLogin, setShowLogin] = useState(false);
@@ -61,7 +61,10 @@ export default function App() {
   // fallback) — a handful of paths are recognized by inspecting
   // window.location directly instead of pulling in react-router.
   const inviteToken = window.location.pathname.match(INVITE_PATH_RE)?.[1] ?? null;
-  const initialDashboardView = window.location.pathname === '/dashboard/team' ? 'team' : 'subjects';
+  const initialDashboardView =
+    window.location.pathname === '/dashboard/team' ? 'team' :
+    window.location.pathname === '/dashboard/settings' ? 'settings' :
+    'subjects';
 
   let mainContent: React.ReactNode;
   if (inviteToken) {
@@ -75,7 +78,14 @@ export default function App() {
       />
     );
   } else if (user) {
-    mainContent = <Dashboard user={user} onLogout={logout} initialView={initialDashboardView} />;
+    mainContent = (
+      <Dashboard
+        user={user}
+        onLogout={logout}
+        onUserUpdated={updateUser}
+        initialView={initialDashboardView}
+      />
+    );
   } else {
     mainContent = (
       <>

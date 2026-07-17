@@ -69,6 +69,8 @@ export interface UserProfile {
   plan: Plan;
   preferences: StudyPreferences;
   createdAt: string;
+  // Null until the user changes institution/course/year once from Settings.
+  courseChangedAt: string | null;
   // TODO: Production — replace demoSessionActive with a real JWT from
   // Supabase Auth, Firebase Auth, Clerk, Auth.js or your own secure backend.
   demoSessionActive: boolean;

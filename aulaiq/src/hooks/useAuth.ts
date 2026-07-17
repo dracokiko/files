@@ -59,11 +59,17 @@ export function useAuth() {
     setUser(profile);
   }, []);
 
+  // Lets Settings apply a server-confirmed profile change (e.g. course/year)
+  // to the in-memory session immediately, without a full re-fetch.
+  const updateUser = useCallback((profile: UserProfile) => {
+    setUser(profile);
+  }, []);
+
   const finishRecovery = useCallback(async () => {
     setRecoveryMode(false);
     await signOut();
     setUser(null);
   }, []);
 
-  return { user, login, logout, register, loading, recoveryMode, finishRecovery };
+  return { user, login, logout, register, updateUser, loading, recoveryMode, finishRecovery };
 }

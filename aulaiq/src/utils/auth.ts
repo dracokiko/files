@@ -55,6 +55,7 @@ export async function signUp(params: {
       plan: 'free',
       preferences: params.preferences,
       createdAt: new Date().toISOString(),
+      courseChangedAt: null,
       demoSessionActive: false,
     },
     error: null,
@@ -113,6 +114,7 @@ export async function fetchProfile(userId: string): Promise<UserProfile | null> 
     plan: data.plan,
     preferences: data.preferences,
     createdAt: data.created_at,
+    courseChangedAt: data.course_changed_at ?? null,
     demoSessionActive: false,
   };
 }

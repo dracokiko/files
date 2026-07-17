@@ -19,7 +19,7 @@ function makeUser(overrides: Partial<UserProfile> = {}): UserProfile {
     id: 'u1', name: 'Bea', email: 'bea@example.com', institution: 'X', institutionId: 'x',
     course: 'Y', courseId: 'y', year: 1, yearLabel: '1º ano', plan: 'free',
     preferences: { studyFrequency: '', studyHours: '', mainGoal: '', studyStyle: '' },
-    createdAt: '2026-01-01', demoSessionActive: false,
+    createdAt: '2026-01-01', courseChangedAt: null, demoSessionActive: false,
     ...overrides,
   };
 }
