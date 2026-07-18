@@ -16,7 +16,7 @@ import XPBar from './progress/XPBar';
 import StreakBadge from './progress/StreakBadge';
 import TeamPage from '../pages/TeamPage';
 import SettingsPage from '../pages/SettingsPage';
-import GreekBackground from './GreekBackground';
+import PictogramBackground from './PictogramBackground';
 
 type DashboardView = 'subjects' | 'team' | 'settings';
 
@@ -275,7 +275,7 @@ export default function Dashboard({ user, onLogout, onUserUpdated, initialView =
   if (openedSubject) {
     return (
       <div className="relative isolate min-h-screen bg-gray-50">
-        <GreekBackground />
+        <PictogramBackground />
         {/* Minimal top bar */}
         <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -307,7 +307,7 @@ export default function Dashboard({ user, onLogout, onUserUpdated, initialView =
   return (
     <>
       <div className="relative isolate min-h-screen bg-gray-50">
-        <GreekBackground />
+        <PictogramBackground />
         {/* Top bar */}
         <div className="bg-white border-b border-gray-100 px-4 py-3">
           <div className="max-w-3xl mx-auto flex items-center justify-between gap-4">
