@@ -19,19 +19,43 @@ interface Placement {
   opacity: number;
 }
 
+// Row r reads 1..11 left to right (col + 2*row, wrapped), so every row is a
+// rotation of "1,2,3,...,11". Shifting the sequence by 2 per row — combined
+// with the half-step brick offset below — guarantees a given icon never has
+// the same icon directly above it, nor diagonally above-left/above-right.
+function iconNumberAt(row: number, col: number): number {
+  const shifted = ((col + 2 * row) % PICTOGRAM_COUNT + PICTOGRAM_COUNT) % PICTOGRAM_COUNT;
+  return shifted + 1;
+}
+
+// Small deterministic tilt/opacity variation so the pattern isn't perfectly
+// static-looking, without relying on Math.random (keeps the layout a pure
+// function of row/col, matching resize-stable, reload-stable output).
+function pseudoRandom(row: number, col: number): number {
+  const n = Math.sin(row * 12.9898 + col * 78.233) * 43758.5453;
+  return n - Math.floor(n);
+}
+
 function buildGrid(width: number, height: number): Placement[] {
   if (!width || !height) return [];
-  const cols = Math.ceil(width / STEP);
+  const cols = Math.ceil(width / STEP) + 1;
   const rows = Math.ceil(height / STEP);
   const placements: Placement[] = [];
   for (let row = 0; row < rows; row++) {
+    // Every other row is offset by half a step, so its icons sit centered
+    // between the icons of the row above (brick/masonry layout).
+    const offsetX = row % 2 === 1 ? STEP / 2 : 0;
     for (let col = 0; col < cols; col++) {
+      const left = col * STEP + offsetX + STEP / 2;
+      if (left > width + STEP / 2) continue;
+      const num = iconNumberAt(row, col);
+      const rand = pseudoRandom(row, col);
       placements.push({
-        src: PICTOGRAMS[Math.floor(Math.random() * PICTOGRAMS.length)],
+        src: PICTOGRAMS[num - 1],
         top: row * STEP + STEP / 2,
-        left: col * STEP + STEP / 2,
-        rotate: Math.random() * 40 - 20,
-        opacity: 0.035 + Math.random() * 0.045,
+        left,
+        rotate: rand * 40 - 20,
+        opacity: 0.035 + pseudoRandom(col, row) * 0.045,
       });
     }
   }
