@@ -111,6 +111,9 @@
     .badge-failed     { background: #fef2f2; color: #dc2626; }
     .badge-info       { background: #eff6ff; color: #1d4ed8; }
     .badge-optional   { background: #fdf4ff; color: #a21caf; }
+    .badge-mandatory  { background: #d1fae5; color: #047857; }
+    .badge-sem-1      { background: #e0e7ff; color: #4338ca; }
+    .badge-sem-2      { background: #ffedd5; color: #c2410c; }
 
     /* ── Count badge next to section titles ── */
     .count-badge {
@@ -278,6 +281,17 @@
       <div class="breadcrumb" id="estrutura-breadcrumb"></div>
       <div class="filters">
         <input type="text" id="estrutura-search" placeholder="🔍 Pesquisar..." oninput="renderEstrutura()">
+        <select id="estrutura-filter-semestre" onchange="renderEstrutura()" style="display:none">
+          <option value="">Todos os semestres</option>
+          <option value="1">1º Semestre</option>
+          <option value="2">2º Semestre</option>
+          <option value="none">Sem semestre definido</option>
+        </select>
+        <select id="estrutura-filter-obrigatoriedade" onchange="renderEstrutura()" style="display:none">
+          <option value="">Obrigatórias e Opcionais</option>
+          <option value="mandatory">Só Obrigatórias</option>
+          <option value="optional">Só Opcionais</option>
+        </select>
       </div>
       <div id="estrutura-list" class="item-list"></div>
     </div>
@@ -531,6 +545,13 @@
     const addBtn   = document.getElementById('estrutura-add-btn')
     const searchEl = document.getElementById('estrutura-search')
     const search   = (searchEl?.value || '').toLowerCase()
+    const semFilterEl = document.getElementById('estrutura-filter-semestre')
+    const obrigFilterEl = document.getElementById('estrutura-filter-obrigatoriedade')
+
+    // Semester/mandatory filters only make sense at the leaf (cadeiras) level.
+    const atLeafLevel = !!(fac && curso && estrutura.ano != null)
+    if (semFilterEl)   semFilterEl.style.display   = atLeafLevel ? '' : 'none'
+    if (obrigFilterEl) obrigFilterEl.style.display = atLeafLevel ? '' : 'none'
 
     if (!fac) {
       titleEl.textContent = 'Faculdades'
@@ -627,7 +648,19 @@
     searchEl.placeholder = '🔍 Pesquisar cadeira...'
     addBtn.textContent = '+ Nova Cadeira'
     addBtn.onclick = () => startInlineAdd('cadeira')
+    const semFilter = semFilterEl?.value || ''
+    const obrigFilter = obrigFilterEl?.value || ''
     const all = cadeirasList.filter(c => c.curso_id === curso.id && (estrutura.ano === 'none' ? !c.year : String(c.year) === estrutura.ano))
+      .filter(c => {
+        if (semFilter === '1' || semFilter === '2') return c.semester === Number(semFilter)
+        if (semFilter === 'none') return !c.semester
+        return true
+      })
+      .filter(c => {
+        if (obrigFilter === 'mandatory') return !c.is_optional
+        if (obrigFilter === 'optional') return !!c.is_optional
+        return true
+      })
     const list = search ? all.filter(c => c.nome.toLowerCase().includes(search)) : all
     countEl.textContent = all.length
     const addCard = inlineForm?.type === 'cadeira' && inlineForm.id === null ? renderInlineFormCard('cadeira', null) : ''
@@ -637,8 +670,10 @@
       if (inlineForm?.type === 'cadeira' && inlineForm.id === c.id) return renderInlineFormCard('cadeira', c)
       const preview = c.conteudo ? c.conteudo.slice(0, 60) + '…' : '(sem conteúdo)'
       const badges = [
-        c.semester ? `<span class="badge badge-info">${esc(c.semester_label || c.semester + 'º Sem.')}</span>` : '',
-        c.is_optional ? `<span class="badge badge-optional">Opcional${c.optional_group ? ' · ' + esc(c.optional_group) : ''}</span>` : '',
+        c.semester ? `<span class="badge badge-sem-${c.semester}">${esc(c.semester_label || c.semester + 'º Sem.')}</span>` : '',
+        c.is_optional
+          ? `<span class="badge badge-optional">Opcional${c.optional_group ? ' · ' + esc(c.optional_group) : ''}</span>`
+          : `<span class="badge badge-mandatory">Obrigatória</span>`,
       ].filter(Boolean).join(' ')
       return `
         <div class="item-row">
