@@ -152,13 +152,19 @@ export default function ingestionV2Routes({ supabaseAdmin, genai }) {
   })
 
   // ── GET /courses — list courses ───────────────────────────────────────────
+  // Includes a document count so admin UI can tell whether a cadeira actually
+  // has v2 material, instead of relying on the unrelated legacy
+  // cadeiras.conteudo text field (which nothing in this pipeline writes to).
   router.get('/courses', async (_req, res) => {
     const { data, error } = await supabaseAdmin
       .from('courses')
-      .select('id, code, title, lang_code, cadeira_id, created_at')
+      .select('id, code, title, lang_code, cadeira_id, created_at, documents(count)')
       .order('title')
     if (error) return res.status(500).json({ error: error.message })
-    res.json(data ?? [])
+    const withCounts = (data ?? []).map(({ documents, ...c }) => ({
+      ...c, documentCount: documents?.[0]?.count ?? 0,
+    }))
+    res.json(withCounts)
   })
 
   // ── POST /courses — create a course ──────────────────────────────────────

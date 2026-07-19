@@ -444,7 +444,7 @@
 
   // ── Init ─────────────────────────────────────────────────────────────────────
   async function init() {
-    await Promise.all([loadFaculdades(), loadCursos(), loadCadeiras()])
+    await Promise.all([loadFaculdades(), loadCursos(), loadCadeiras(), loadV2Courses()])
     populateKCadeiraSelect()
   }
 
@@ -517,6 +517,11 @@
 
   async function loadCadeiras() {
     cadeirasList = await api('GET', '/admin/api/cadeiras')
+    renderEstrutura()
+  }
+
+  async function loadV2Courses() {
+    kV2Courses = await api('GET', '/admin/api/v2/courses')
     renderEstrutura()
   }
 
@@ -680,7 +685,11 @@
     const sorted = [...list].sort((a, b) => (a.semester || 99) - (b.semester || 99) || a.nome.localeCompare(b.nome))
     listEl.innerHTML = addCard + sorted.map(c => {
       if (inlineForm?.type === 'cadeira' && inlineForm.id === c.id) return renderInlineFormCard('cadeira', c)
-      const preview = c.conteudo ? c.conteudo.slice(0, 60) + '…' : '(sem conteúdo)'
+      const v2Course = kV2Courses.find(v => v.cadeira_id === c.id)
+      const docCount = v2Course?.documentCount || 0
+      const preview = docCount > 0
+        ? `📚 ${docCount} material${docCount === 1 ? '' : 'ais'} processado${docCount === 1 ? '' : 's'} (pipeline v2)`
+        : (c.conteudo ? c.conteudo.slice(0, 60) + '…' : '(sem conteúdo)')
       const badges = [
         c.semester ? `<span class="badge badge-sem-${c.semester}">${esc(c.semester_label || c.semester + 'º Sem.')}</span>` : '',
         c.is_optional
@@ -1045,6 +1054,7 @@
       document.getElementById('k-nome').value = ''
       kPendingFiles = []
       renderKFiles()
+      await loadV2Courses() // refresh document counts so Estrutura Académica reflects the new material
       toast('Material processado pela pipeline v2!', 'success')
 
     } catch (err) {
