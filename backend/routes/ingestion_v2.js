@@ -6,24 +6,60 @@ import { mimeToKind } from '../ingestion/parsers/index.js'
  * Factory: returns an Express router for the v2 knowledge ingestion API.
  * Mount at /admin/api/v2/ingest (behind requireAdmin in server.js).
  */
+const RAW_UPLOADS_BUCKET = 'materiais-raw'
+
 export default function ingestionV2Routes({ supabaseAdmin, genai }) {
   const router = express.Router()
+
+  // ── POST /upload-url — mint a signed Storage upload URL ──────────────────
+  // Lets the admin browser upload the raw file straight to Supabase Storage,
+  // bypassing Vercel's ~4.5MB serverless request-body limit (base64-in-JSON
+  // was silently dropping any real course material before it reached this
+  // server at all). The signed token is the only thing granting write access
+  // — this route sits behind requireAdmin, so only an authenticated admin
+  // session can ever obtain one.
+  router.post('/upload-url', async (req, res) => {
+    const { filename, mimeType } = req.body
+    if (!filename) return res.status(400).json({ error: 'filename required' })
+
+    const safeName = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${filename.replace(/[^a-zA-Z0-9._-]/g, '_')}`
+    const { data, error } = await supabaseAdmin.storage
+      .from(RAW_UPLOADS_BUCKET)
+      .createSignedUploadUrl(safeName)
+    if (error) return res.status(500).json({ error: error.message })
+
+    res.json({ bucket: RAW_UPLOADS_BUCKET, path: data.path, token: data.token })
+  })
 
   // ── POST /ingest/sync — synchronous ingest ───────────────────────────────
   // The only ingest entry point: awaits the full pipeline before responding,
   // which is what actually works correctly on Vercel's serverless runtime
   // (a fire-and-forget continuation after res.json() is not reliably run
   // to completion there). Used by the admin panel and ingest_one.js.
+  //
+  // Accepts either a small `base64` payload (used for pasted text, which is
+  // always tiny) or a `{ storagePath, bucket }` reference to a file already
+  // uploaded to Storage via /upload-url (used for real file uploads, which
+  // can exceed the serverless body-size limit if sent as base64 directly).
   router.post('/ingest/sync', async (req, res) => {
-    const { base64, filename, mimeType, courseId, title, langCode } = req.body
+    const { base64, storagePath, bucket, filename, mimeType, courseId, title, langCode } = req.body
 
-    if (!base64 || !filename || !courseId)
-      return res.status(400).json({ error: 'base64, filename, courseId required' })
+    if (!filename || !courseId || (!base64 && !storagePath))
+      return res.status(400).json({ error: 'filename, courseId and (base64 or storagePath) required' })
 
     const sourceKind = mimeToKind(mimeType, filename)
     if (!sourceKind) return res.status(400).json({ error: `Unsupported file type` })
 
-    const buffer = Buffer.from(base64, 'base64')
+    let buffer
+    if (storagePath) {
+      const { data, error } = await supabaseAdmin.storage
+        .from(bucket || RAW_UPLOADS_BUCKET)
+        .download(storagePath)
+      if (error) return res.status(500).json({ error: `Falha ao obter ficheiro: ${error.message}` })
+      buffer = Buffer.from(await data.arrayBuffer())
+    } else {
+      buffer = Buffer.from(base64, 'base64')
+    }
 
     try {
       const result = await ingestDocument({
@@ -35,6 +71,10 @@ export default function ingestionV2Routes({ supabaseAdmin, genai }) {
       res.json(result)
     } catch (err) {
       res.status(500).json({ error: err.message })
+    } finally {
+      if (storagePath) {
+        supabaseAdmin.storage.from(bucket || RAW_UPLOADS_BUCKET).remove([storagePath]).catch(() => {})
+      }
     }
   })
 

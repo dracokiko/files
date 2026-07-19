@@ -233,6 +233,7 @@
     .form-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
     @media (max-width: 600px) { .form-row { grid-template-columns: 1fr; } .card-grid { grid-template-columns: 1fr 1fr; } }
   </style>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 </head>
 <body>
 
@@ -396,6 +397,15 @@
 <div id="toast"></div>
 
 <script>
+  // Public anon key — safe to expose client-side (Supabase's model relies on
+  // RLS/signed tokens for authorization, not on keeping this secret). Used
+  // only to construct a client for uploading to signed Storage URLs minted
+  // by our own admin-gated backend; it grants no access on its own.
+  const supabaseClient = window.supabase.createClient(
+    'https://kdrhuuupityblndayems.supabase.co',
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtkcmh1dXVwaXR5YmxuZGF5ZW1zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1Mzg3MDcsImV4cCI6MjA5NzExNDcwN30.9Gid962pHbioSyoz9tpx541Z1--MNcZYfpjbmvuncbY'
+  )
+
   let faculdades  = []
   let cursos      = []
   let cadeirasList = []
@@ -469,6 +479,20 @@
       reader.onerror = reject
       reader.readAsDataURL(file)
     })
+  }
+
+  // Uploads a File straight to Supabase Storage via a signed URL minted by
+  // our own admin-gated backend, so large course materials never have to
+  // travel through the serverless function's request body (which caps out
+  // around ~4.5MB on Vercel and was silently dropping real uploads).
+  async function uploadFileToRawStorage(file) {
+    const { bucket, path, token } = await api('POST', '/admin/api/v2/upload-url', {
+      filename: file.name,
+      mimeType: file.type || 'application/octet-stream',
+    })
+    const { error } = await supabaseClient.storage.from(bucket).uploadToSignedUrl(path, token, file)
+    if (error) throw new Error(error.message || `Falha ao enviar "${file.name}".`)
+    return { bucket, path }
   }
 
   async function uploadImageIfNeeded(urlInput) {
@@ -999,11 +1023,13 @@
       const processed = []
       for (let i = 0; i < documents.length; i++) {
         const file = documents[i]
-        btn.textContent = `⏳ A processar ${i + 1}/${documents.length}...`
+        btn.textContent = `⏳ A enviar ${i + 1}/${documents.length}...`
         status.textContent = file.name
-        const base64 = await fileToBase64(file)
+        const { bucket, path } = await uploadFileToRawStorage(file)
+        btn.textContent = `⏳ A processar ${i + 1}/${documents.length}...`
         const data = await api('POST', '/admin/api/v2/ingest/sync', {
-          base64,
+          storagePath: path,
+          bucket,
           filename: file.name,
           mimeType: file.type || '',
           courseId: course.id,
