@@ -273,16 +273,16 @@ app.get('/admin/api/cadeiras', requireAdmin, async (req, res) => {
 })
 
 app.post('/admin/api/cadeiras', requireAdmin, async (req, res) => {
-  const { curso_id, nome, ficheiros = [], year, year_label, semester, semester_label, is_optional, optional_group } = req.body
+  const { curso_id, nome, conteudo = '', ficheiros = [], year, year_label, semester, semester_label, is_optional, optional_group } = req.body
   const { data, error } = await supabaseAdmin.from('cadeiras')
-    .insert({ curso_id, nome, ficheiros, year, year_label, semester, semester_label, is_optional, optional_group })
+    .insert({ curso_id, nome, conteudo, ficheiros, year, year_label, semester, semester_label, is_optional, optional_group })
     .select().single()
   if (error) return res.status(500).json({ error: error.message })
   res.json(data)
 })
 
 app.put('/admin/api/cadeiras/:id', requireAdmin, async (req, res) => {
-  const { curso_id, nome, ficheiros, year, year_label, semester, semester_label, is_optional, optional_group } = req.body
+  const { curso_id, nome, conteudo, ficheiros, year, year_label, semester, semester_label, is_optional, optional_group } = req.body
 
   // Apagar do Storage os ficheiros que foram removidos
   if (ficheiros !== undefined) {
@@ -299,6 +299,7 @@ app.put('/admin/api/cadeiras/:id', requireAdmin, async (req, res) => {
 
   const update = {
     curso_id, nome,
+    ...(conteudo !== undefined && { conteudo }),
     ...(ficheiros !== undefined && { ficheiros }),
     ...(year !== undefined && { year }),
     ...(year_label !== undefined && { year_label }),
