@@ -838,6 +838,10 @@
 
   function handleInlineResumoFiles(input) { processInlineResumoFiles(Array.from(input.files)); input.value = '' }
 
+  // Counts resumo extractions currently in flight, so saveInline() can refuse
+  // to save (or race to an empty textarea) while a file is still processing.
+  let resumoExtractionsInFlight = 0
+
   async function processInlineResumoFiles(files) {
     const listEl     = document.getElementById('inline-files-list')
     const conteudoEl = document.getElementById('inline-conteudo')
@@ -848,6 +852,7 @@
       itemEl.className = 'file-item loading'
       itemEl.innerHTML = `<span>⏳</span><span class="fname">${esc(file.name)}</span><span style="color:#94a3b8">${(file.size/1024/1024).toFixed(1)} MB</span>`
       listEl.appendChild(itemEl)
+      resumoExtractionsInFlight++
       try {
         const { bucket, path } = await uploadFileToRawStorage(file)
         const result = await api('POST', '/admin/api/extract-text', {
@@ -861,6 +866,8 @@
         itemEl.className = 'file-item error'
         itemEl.querySelector('span').textContent = '❌'
         itemEl.querySelector('.fname').textContent += ` — ${err.message}`
+      } finally {
+        resumoExtractionsInFlight--
       }
     }
   }
@@ -888,6 +895,10 @@
         inlineForm = null
         await loadCursos()
       } else if (type === 'cadeira') {
+        if (resumoExtractionsInFlight > 0) {
+          toast('Aguarda a extração dos ficheiros terminar antes de guardar.', 'error')
+          return
+        }
         const curso_id = estrutura.cursoId
         const conteudo = document.getElementById('inline-conteudo').value.trim()
         const yearVal = document.getElementById('inline-ano').value
