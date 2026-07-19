@@ -849,8 +849,10 @@
       itemEl.innerHTML = `<span>⏳</span><span class="fname">${esc(file.name)}</span><span style="color:#94a3b8">${(file.size/1024/1024).toFixed(1)} MB</span>`
       listEl.appendChild(itemEl)
       try {
-        const base64 = await fileToBase64(file)
-        const result = await api('POST', '/admin/api/extract-text', { base64, mimeType: file.type || '', filename: file.name })
+        const { bucket, path } = await uploadFileToRawStorage(file)
+        const result = await api('POST', '/admin/api/extract-text', {
+          storagePath: path, bucket, mimeType: file.type || '', filename: file.name,
+        })
         const existing = conteudoEl.value.trim()
         conteudoEl.value = existing ? existing + '\n\n' + result.text : result.text
         itemEl.className = 'file-item success'

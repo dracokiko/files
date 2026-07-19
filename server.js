@@ -171,22 +171,37 @@ app.post('/admin/api/upload-resumo', requireAdmin, async (req, res) => {
 })
 
 // ── Admin: extrair texto de um ficheiro carregado (PDF/DOCX/TXT) ─────────────
+// Accepts either a small `base64` payload or a `{ storagePath, bucket }`
+// reference to a file already uploaded to Storage via /admin/api/v2/upload-url
+// — the latter is required for anything beyond ~3MB, since Vercel's
+// serverless request-body limit silently drops larger base64 payloads before
+// they ever reach this handler.
 app.post('/admin/api/extract-text', requireAdmin, async (req, res) => {
-  const { base64, mimeType, filename } = req.body
-  if (!base64) return res.status(400).json({ error: 'Ficheiro em falta.' })
+  const { base64, storagePath, bucket, mimeType, filename } = req.body
+  if (!base64 && !storagePath) return res.status(400).json({ error: 'Ficheiro em falta.' })
 
   const sourceKind = mimeToKind(mimeType, filename)
   if (!sourceKind) return res.status(400).json({ error: `Tipo de ficheiro não suportado: ${filename}` })
 
   let buffer
-  try { buffer = Buffer.from(base64, 'base64') }
-  catch { return res.status(400).json({ error: 'base64 inválido.' }) }
+  if (storagePath) {
+    const { data, error } = await supabaseAdmin.storage.from(bucket || 'materiais-raw').download(storagePath)
+    if (error) return res.status(500).json({ error: `Falha ao obter ficheiro: ${error.message}` })
+    buffer = Buffer.from(await data.arrayBuffer())
+  } else {
+    try { buffer = Buffer.from(base64, 'base64') }
+    catch { return res.status(400).json({ error: 'base64 inválido.' }) }
+  }
 
   try {
     const result = await parseDocument(buffer, sourceKind)
     res.json({ text: result.markdown })
   } catch (err) {
     res.status(500).json({ error: err.message })
+  } finally {
+    if (storagePath) {
+      supabaseAdmin.storage.from(bucket || 'materiais-raw').remove([storagePath]).catch(() => {})
+    }
   }
 })
 
